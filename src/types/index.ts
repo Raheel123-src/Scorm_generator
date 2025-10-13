@@ -106,6 +106,7 @@ export interface HotspotImageData {
     y: number;
     title: string;
     description: string;
+    color?: string;
   }[];
 }
 

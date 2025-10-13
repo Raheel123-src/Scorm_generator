@@ -32,6 +32,7 @@ import HotspotImageEditor from '@/components/Editor/HotspotImageEditor'
 import AccordionEditor from '@/components/Editor/AccordionEditor'
 import ChecklistEditor from '@/components/Editor/ChecklistEditor'
 import EmbedEditor from '@/components/Editor/EmbedEditor'
+import CourseCompletedEditor from '@/components/Editor/CourseCompletedEditor'
   import './editor.css'
   import './welcome-editor.css'
   import './hotspot-image-editor.css'
@@ -66,6 +67,19 @@ export default function EditorPage() {
       data: {
         title: 'Knowledge Check',
         questions: []
+      }
+    },
+    {
+      id: '3',
+      type: 'course-completed',
+      title: 'Course Completed',
+      data: {
+        title: "You're all done!",
+        subtitle: "How was your course experience?",
+        selectedEmoji: 'happy',
+        ctaText: "Create your own course",
+        layout: 'image-behind',
+        confetti: 'celebration'
       }
     }
   ])
@@ -107,7 +121,8 @@ export default function EditorPage() {
       hotspot: 'Hotspot Image',
       accordion: 'Accordion',
       checklist: 'Checklist',
-      embed: 'Embed'
+      embed: 'Embed',
+      'course-completed': 'Course Completed'
     }
     return titles[type] || 'Content Block'
   }
@@ -123,7 +138,15 @@ export default function EditorPage() {
       hotspot: { title: 'Hotspot', image: '', hotspots: [] },
       accordion: { title: 'Accordion', items: [] },
       checklist: { title: 'Checklist', items: [] },
-      embed: { title: 'Embed', url: '', description: '' }
+      embed: { title: 'Embed', url: '', description: '' },
+      'course-completed': { 
+        title: "You're all done!", 
+        subtitle: "How was your course experience?", 
+        selectedEmoji: 'happy', 
+        ctaText: "Create your own course",
+        layout: 'image-behind',
+        confetti: 'celebration'
+      }
     }
     return defaults[type] || {}
   }
@@ -658,6 +681,20 @@ export default function EditorPage() {
               onChange={(data) => updateBlockData(block.id, data)}
             />
           )
+        case 'course-completed':
+          return (
+            <CourseCompletedEditor
+              data={block.data || { 
+                title: "You're all done!", 
+                subtitle: "How was your course experience?", 
+                selectedEmoji: 'happy', 
+                ctaText: "Create your own course",
+                layout: 'image-behind',
+                confetti: 'celebration'
+              }}
+              onChange={(data) => updateBlockData(block.id, data)}
+            />
+          )
       
       default:
         return (
@@ -1001,16 +1038,46 @@ export default function EditorPage() {
                         </div>
                       </div>
                     )}
+                    {block.type === 'course-completed' && (
+                      <div className="mini-preview">
+                        <div className="mini-preview-content" style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)', color: 'white' }}>
+                          <div className="mini-preview-title" style={{ color: 'white', fontSize: '1.2rem', fontWeight: 'bold' }}>
+                            {block.data.title || "You're all done!"}
+                          </div>
+                          <div className="mini-preview-description" style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '0.9rem' }}>
+                            {block.data.subtitle || "How was your course experience?"}
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', margin: '0.5rem 0' }}>
+                            <span style={{ fontSize: '1.2rem' }}>😢</span>
+                            <span style={{ fontSize: '1.2rem' }}>😐</span>
+                            <span style={{ fontSize: '1.2rem' }}>😊</span>
+                          </div>
+                          <div style={{ 
+                            background: '#3b82f6', 
+                            color: 'white', 
+                            padding: '0.3rem 0.8rem', 
+                            borderRadius: '0.5rem', 
+                            fontSize: '0.8rem',
+                            fontWeight: '600',
+                            textAlign: 'center'
+                          }}>
+                            {block.data.ctaText || "Create your own course"}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      deleteBlock(block.id)
-                    }}
-                    className="delete-btn"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  {block.type !== 'course-completed' && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        deleteBlock(block.id)
+                      }}
+                      className="delete-btn"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </motion.div>
               ))}
             </div>

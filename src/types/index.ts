@@ -32,7 +32,8 @@ export type ContentType =
   | 'video'
   | 'flashcards'
   | 'quiz'
-  | 'hotspot';
+  | 'hotspot'
+  | 'course-completed';
 
 export interface WelcomeData {
   title: string;
@@ -136,4 +137,15 @@ export interface VideoData {
   videoUrl: string;
   enforceCompletion: boolean;
   description: string;
+}
+
+export interface CourseCompletedData {
+  title: string;
+  subtitle: string;
+  selectedEmoji: 'sad' | 'neutral' | 'happy';
+  ctaText: string;
+  backgroundImage?: string;
+  layoutImage?: string;
+  layout: 'image-behind' | 'image-left' | 'image-right' | 'no-image';
+  confetti: 'none' | 'subtle' | 'celebration';
 }

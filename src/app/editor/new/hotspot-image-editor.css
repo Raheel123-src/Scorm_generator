@@ -1,0 +1,933 @@
+/* Hotspot Image Editor */
+.hotspot-image-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #f9fafb;
+  overflow: hidden;
+}
+
+/* Header Bar */
+.hotspot-editor-header {
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  margin: 16px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}
+
+.header-left-container {
+  display: flex;
+  align-items: center;
+  background: white;
+  height: 25px;
+  border-radius: 24px;
+  padding: 8px 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-right: 16px;
+}
+
+.header-right-container {
+  display: flex;
+  align-items: center;
+  background: #374151;
+  border-radius: 24px;
+  padding: 8px 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.header-separator {
+  width: 1px;
+  height: 20px;
+  background: #e5e7eb;
+  margin: 0 8px;
+}
+
+.header-right-container .header-separator {
+  background: #6b7280;
+}
+
+.add-hotspot-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: transparent;
+  color: #374151;
+  border: none;
+  border-radius: 25px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.add-hotspot-btn:hover:not(.disabled) {
+  background: #f3f4f6;
+}
+
+.add-hotspot-btn.disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.icon-style-container {
+  position: relative;
+}
+
+.icon-style-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 25px;
+  font-size: 14px;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.icon-style-btn:hover {
+  background: #f3f4f6;
+}
+
+.icon-style-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #374151;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-style-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  padding: 4px 0;
+  min-width: 120px;
+  z-index: 1000;
+  margin-top: 4px;
+}
+
+.dropdown-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  font-size: 14px;
+  color: #374151;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.dropdown-option:hover {
+  background: #f3f4f6;
+}
+
+.dropdown-option-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #374151;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.number-icon {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.header-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.header-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Main Content */
+.hotspot-content {
+  display: flex;
+  flex: 1;
+  gap: 16px;
+  padding: 0 16px 16px;
+  overflow: hidden;
+}
+
+.hotspot-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  overflow: hidden;
+}
+
+.hotspot-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  padding: 0;
+  width: 100%;
+  max-width: 500px;
+}
+
+.hotspot-title:focus {
+  outline: none;
+}
+
+.hotspot-description {
+  font-size: 1.125rem;
+  color: #6b7280;
+  margin: 0.5rem 0 1.5rem 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  cursor: text;
+  min-height: 1.5rem;
+  font-weight: 400;
+  width: 100%;
+  max-width: 500px;
+}
+
+.hotspot-description:focus {
+  outline: none;
+  color: #374151;
+}
+
+.hotspot-description:empty:before {
+  content: "Add a description...";
+  color: #9ca3af;
+}
+
+/* Image Container */
+.image-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  width: fit-content;
+  height: fit-content;
+  max-width: 90%;
+  max-height: 70vh;
+  margin: 0 auto;
+}
+
+.image-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: fit-content;
+  min-height: fit-content;
+}
+
+.hotspot-image {
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  border-radius: 20px;
+}
+
+/* Image Placeholder */
+.image-placeholder {
+  width: 100%;
+  height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed #d1d5db;
+  border-radius: 12px;
+  background: #f9fafb;
+}
+
+.placeholder-content {
+  text-align: center;
+}
+
+.placeholder-icon {
+  width: 80px;
+  height: 80px;
+  background: #e5e7eb;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  color: #6b7280;
+}
+
+.placeholder-text {
+  font-size: 16px;
+  color: #6b7280;
+  margin-bottom: 16px;
+}
+
+.upload-btn {
+  display: inline-block;
+  padding: 12px 24px;
+  background: #3b82f6;
+  color: white;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.upload-btn:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+}
+
+.image-upload-input {
+  display: none;
+}
+
+/* Hotspot Markers */
+.hotspot-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  z-index: 10;
+}
+
+.hotspot-icon {
+  width: 32px;
+  height: 32px;
+  background: #3b82f6;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+.hotspot-marker:hover .hotspot-icon {
+  transform: scale(1.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.hotspot-marker.selected .hotspot-icon {
+  background: #1d4ed8;
+  transform: scale(1.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.hotspot-number {
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+}
+
+/* Right Sidebar */
+.hotspot-sidebar {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  background: transparent;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  z-index: 10;
+}
+
+.sidebar-icon {
+  width: 36px;
+  height: 36px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #374151;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-icon:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+  transform: scale(1.05);
+}
+
+/* Visibility Dropdown */
+.visibility-dropdown {
+  position: absolute;
+  top: 51%;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  padding: 16px;
+  min-width: 180px;
+  z-index: 1000;
+  margin-top: 8px;
+}
+
+.visibility-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.visibility-option:last-child {
+  border-bottom: none;
+}
+
+.option-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.hotspot-visibility-checkbox {
+  position: relative;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.hotspot-visibility-checkbox input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.hotspot-visibility-checkmark {
+  height: 1.25rem;
+  width: 1.25rem;
+  background: white;
+  border: 2px solid #d1d5db;
+  border-radius: 0.25rem;
+  position: relative;
+  transition: all 0.2s;
+}
+
+.hotspot-visibility-checkbox input:checked ~ .hotspot-visibility-checkmark {
+  background: #111827;
+  border-color: #111827;
+}
+
+.hotspot-visibility-checkbox input:checked ~ .hotspot-visibility-checkmark:after {
+  content: "";
+  position: absolute;
+  left: 0.375rem;
+  top: 0.125rem;
+  width: 0.25rem;
+  height: 0.5rem;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.hotspot-visibility-checkbox:hover .hotspot-visibility-checkmark {
+  border-color: #9ca3af;
+}
+
+/* Color Picker */
+.color-picker-container {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  padding: 16px;
+  min-width: 200px;
+  z-index: 1000;
+  margin-top: 8px;
+}
+
+.color-picker-header {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.color-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.color-option {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.color-option:hover {
+  border-color: #3b82f6;
+  transform: scale(1.1);
+}
+
+/* Hidden Input */
+.hidden-input {
+  display: none;
+}
+
+/* Hotspot Edit Card - appears on image */
+.hotspot-edit-card {
+  position: absolute;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  padding: 20px;
+  min-width: 240px;
+  max-width: 320px;
+  z-index: 9999;
+  border: none;
+}
+
+/* Position classes for dynamic positioning - corners touch the hotspot icon */
+.hotspot-edit-card-top-left {
+  top: 0;
+  left: 0;
+  transform: translate(0, -100%);
+}
+
+.hotspot-edit-card-top-right {
+  top: 0;
+  right: 0;
+  transform: translate(100%, -100%);
+}
+
+.hotspot-edit-card-bottom-left {
+  bottom: 0;
+  left: 0;
+  transform: translate(-100%, 100%);
+}
+
+.hotspot-edit-card-bottom-right {
+  bottom: 0;
+  right: 0;
+  transform: translate(100%, 100%);
+}
+
+/* Dynamic positioning to avoid going out of screen */
+.hotspot-edit-card {
+  /* Ensure card stays within viewport bounds */
+  max-width: min(300px, 50vw);
+  max-height: min(200px, 40vh);
+}
+
+/* Adjust positioning for edge cases */
+.hotspot-edit-card-top-left {
+  /* If too close to left edge, move right */
+  left: max(0, calc(0px - 20px));
+}
+
+.hotspot-edit-card-top-right {
+  /* If too close to right edge, move left */
+  right: max(0, calc(0px - 20px));
+}
+
+.hotspot-edit-card-bottom-left {
+  /* If too close to left edge, move right */
+  left: max(0, calc(0px - 20px));
+}
+
+.hotspot-edit-card-bottom-right {
+  /* If too close to right edge, move left */
+  right: max(0, calc(0px - 20px));
+}
+
+.hotspot-edit-content {
+  position: relative;
+}
+
+.hotspot-edit-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 12px;
+  border: none;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  cursor: text;
+  line-height: 1.2;
+}
+
+.hotspot-edit-title:focus {
+  outline: none;
+}
+
+.hotspot-edit-description {
+  font-size: 16px;
+  color: #6b7280;
+  border: none;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  cursor: text;
+  min-height: 24px;
+  line-height: 1.4;
+}
+
+.hotspot-edit-description:focus {
+  outline: none;
+}
+
+.hotspot-edit-menu {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.hotspot-menu-button {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.hotspot-menu-button:hover {
+  background-color: #f3f4f6;
+}
+
+.hotspot-menu-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 8px 0;
+  min-width: 160px;
+  z-index: 10000;
+  border: 1px solid #e5e7eb;
+}
+
+.hotspot-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 14px;
+  color: #374151;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.hotspot-menu-item:hover {
+  background-color: #f9fafb;
+}
+
+.hotspot-menu-icon {
+  font-size: 16px;
+  color: #6b7280;
+}
+
+/* Hotspot Color Picker */
+.hotspot-color-picker-container {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  padding: 16px;
+  min-width: 280px;
+  z-index: 1000;
+  margin-top: 8px;
+}
+
+.hotspot-color-picker-header {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 12px;
+}
+
+.hotspot-color-picker-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hotspot-color-picker-main {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hotspot-color-saturation-area {
+  width: 100%;
+  height: 120px;
+  border-radius: 8px;
+  position: relative;
+  cursor: crosshair;
+  border: 1px solid #e5e7eb;
+  user-select: none;
+  background-color: hsl(var(--hue, 240), 100%, 50%);
+  background-image: 
+    linear-gradient(to right, white, transparent),
+    linear-gradient(to bottom, transparent, black);
+}
+
+.hotspot-color-saturation-area:hover {
+  border-color: #3b82f6;
+}
+
+.hotspot-color-saturation-selector {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 2px solid white;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+}
+
+.hotspot-color-hue-slider {
+  width: 100%;
+  height: 20px;
+  border-radius: 10px;
+  position: relative;
+  cursor: pointer;
+  background: linear-gradient(to right, 
+    hsl(0, 100%, 50%), 
+    hsl(60, 100%, 50%), 
+    hsl(120, 100%, 50%), 
+    hsl(180, 100%, 50%), 
+    hsl(240, 100%, 50%), 
+    hsl(300, 100%, 50%), 
+    hsl(360, 100%, 50%)
+  );
+  border: 1px solid #e5e7eb;
+  user-select: none;
+}
+
+.hotspot-color-hue-slider:hover {
+  border-color: #3b82f6;
+}
+
+.hotspot-color-hue-handle {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  background: white;
+  border: 2px solid #3b82f6;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.hotspot-color-picker-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hotspot-color-preview-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.hotspot-color-hex-input {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: monospace;
+  background: #f9fafb;
+  color: #374151;
+}
+
+.hotspot-color-picker-presets {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.preset-add {
+  width: 24px;
+  height: 24px;
+  border: 1px dashed #d1d5db;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.preset-add:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+
+.preset-color {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.preset-color:hover {
+  transform: scale(1.1);
+  border-color: #3b82f6;
+}
+
+.hotspot-color-picker-reset {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.reset-btn {
+  padding: 6px 12px;
+  background: #f3f4f6;
+  color: #6b7280;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.reset-btn:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+/* Adjust delete button position based on card position */
+.hotspot-edit-card-top-left .hotspot-edit-actions,
+.hotspot-edit-card-bottom-left .hotspot-edit-actions {
+  right: -8px;
+  left: auto;
+}
+
+.hotspot-edit-card-top-right .hotspot-edit-actions,
+.hotspot-edit-card-bottom-right .hotspot-edit-actions {
+  left: -8px;
+  right: auto;
+}
+
+.hotspot-edit-delete {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: #ef4444;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.hotspot-edit-delete:hover {
+  background: #dc2626;
+  transform: scale(1.1);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .hotspot-editor-header {
+    padding: 12px 16px;
+    margin: 8px;
+  }
+  
+  .header-controls {
+    gap: 8px;
+  }
+  
+  .add-hotspot-btn,
+  .header-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  
+  .hotspot-content {
+    padding: 0 8px 8px;
+    gap: 12px;
+  }
+  
+  .hotspot-sidebar {
+    width: 50px;
+    padding: 12px 0;
+  }
+  
+  .sidebar-icon {
+    width: 36px;
+    height: 36px;
+  }
+}

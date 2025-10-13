@@ -1,0 +1,419 @@
+/* Welcome Page Editor Styles */
+.welcome-preview {
+  width: 100%;
+  height: 100%;
+  background: #0f0f23;
+  border-radius: 1rem;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 90vh;
+  max-height: 90vh;
+}
+
+/* Top Controls */
+.welcome-top-controls {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.5rem;
+  z-index: 20;
+}
+
+.welcome-control-btn {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #1f2937;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.welcome-control-btn:hover {
+  background: rgba(255, 255, 255, 1);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+.welcome-control-btn svg {
+  color: #1f2937;
+}
+
+/* Right Sidebar Icons */
+.welcome-sidebar-icons {
+  position: absolute;
+  top: 50%;
+  right: 1rem;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  z-index: 20;
+}
+
+.welcome-sidebar-icon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.welcome-sidebar-icon:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+/* Background Gradient */
+.welcome-gradient {
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 60%;
+  height: 200%;
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #1e40af 100%);
+  border-radius: 50%;
+  opacity: 0.3;
+  transform: rotate(-15deg);
+}
+
+/* Main Content Area */
+.welcome-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+}
+
+.welcome-content-inner {
+  text-align: center;
+  color: white;
+  max-width: 600px;
+  width: 100%;
+}
+
+.welcome-content-inner[data-alignment="left"] {
+  text-align: left;
+}
+
+.welcome-content-inner[data-alignment="right"] {
+  text-align: right;
+}
+
+/* Course Title */
+.welcome-title {
+  font-size: 3rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  outline: none;
+  min-height: 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.welcome-title:hover {
+  transform: scale(1.02);
+}
+
+/* Duration */
+.welcome-duration {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  color: #cbd5e1;
+}
+
+.welcome-duration[data-alignment="left"] {
+  justify-content: flex-start;
+}
+
+.welcome-duration[data-alignment="right"] {
+  justify-content: flex-end;
+}
+
+.welcome-duration-input {
+  background: transparent;
+  border: none;
+  color: #cbd5e1;
+  font-size: 1rem;
+  text-align: center;
+  outline: none;
+  width: 60px;
+  transition: all 0.2s;
+}
+
+.welcome-duration-input:focus {
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 0.25rem;
+  padding: 0.25rem;
+}
+
+/* Description */
+.welcome-description {
+  font-size: 1.125rem;
+  color: #94a3b8;
+  margin-bottom: 3rem;
+  line-height: 1.6;
+  min-height: 2rem;
+  outline: none;
+  background: transparent;
+  border: 1px dashed rgba(148, 163, 184, 0.3);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  cursor: text;
+  transition: all 0.2s;
+}
+
+.welcome-description:hover {
+  border-color: rgba(148, 163, 184, 0.5);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.welcome-description:focus {
+  border-color: rgba(148, 163, 184, 0.8);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.welcome-description[data-alignment="left"] {
+  text-align: left;
+}
+
+.welcome-description[data-alignment="right"] {
+  text-align: right;
+}
+
+/* Start Course Button */
+.welcome-start-btn {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 2rem;
+  border: none;
+  font-size: 1.125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.4);
+}
+
+.welcome-start-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 35px -5px rgba(59, 130, 246, 0.6);
+}
+
+.welcome-start-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.4);
+}
+
+.welcome-start-btn[data-alignment="left"] {
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}
+
+.welcome-start-btn[data-alignment="right"] {
+  margin-left: auto !important;
+  margin-right: 0 !important;
+}
+
+/* Welcome Settings Panel */
+.welcome-settings-panel {
+  position: absolute;
+  top: 24%;
+  right: 4rem;
+  transform: translateY(-50%);
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e5e7eb;
+  z-index: 50;
+  min-width: 180px;
+  max-width: 250px;
+  margin-right: 3px;
+}
+
+.welcome-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 0.75rem 0.75rem 0 0;
+}
+
+.welcome-settings-header h4 {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.welcome-settings-close {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  transition: all 0.2s;
+  line-height: 1;
+}
+
+.welcome-settings-close:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.welcome-settings-content {
+  padding: 0.75rem;
+}
+
+.welcome-settings-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0.5rem;
+  border-radius: 0.5rem;
+  transition: background-color 0.2s;
+}
+
+.welcome-settings-item:hover {
+  background: #f9fafb;
+}
+
+.welcome-settings-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #111827;
+}
+
+.welcome-settings-label-disabled {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #9ca3af;
+}
+
+.welcome-settings-checkbox {
+  position: relative;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.welcome-settings-checkbox input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.welcome-settings-checkmark {
+  height: 1.25rem;
+  width: 1.25rem;
+  background: white;
+  border: 2px solid #d1d5db;
+  border-radius: 0.25rem;
+  position: relative;
+  transition: all 0.2s;
+}
+
+.welcome-settings-checkbox input:checked ~ .welcome-settings-checkmark {
+  background: #111827;
+  border-color: #111827;
+}
+
+.welcome-settings-checkbox input:checked ~ .welcome-settings-checkmark:after {
+  content: "";
+  position: absolute;
+  left: 0.375rem;
+  top: 0.125rem;
+  width: 0.25rem;
+  height: 0.5rem;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.welcome-settings-checkbox:hover .welcome-settings-checkmark {
+  border-color: #9ca3af;
+}
+
+.welcome-settings-disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.welcome-settings-disabled:hover .welcome-settings-checkmark {
+  border-color: #d1d5db;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .welcome-title {
+    font-size: 2rem;
+  }
+  
+  .welcome-content {
+    padding: 1rem;
+  }
+  
+  .welcome-top-controls {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .welcome-control-btn {
+    font-size: 0.75rem;
+    padding: 0.375rem 0.75rem;
+  }
+  
+  .welcome-sidebar-icons {
+    right: 0.5rem;
+  }
+  
+  .welcome-sidebar-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+  
+  .welcome-settings-panel {
+    right: 2rem;
+    min-width: 180px;
+  }
+}

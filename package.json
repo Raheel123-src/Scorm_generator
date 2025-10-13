@@ -1,0 +1,36 @@
+{
+  "name": "scorm-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "next build",
+    "start": "next start -p 3001",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@tiptap/extension-placeholder": "^2.1.13",
+    "@tiptap/react": "^2.1.13",
+    "@tiptap/starter-kit": "^2.1.13",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "axios": "^1.12.2",
+    "clsx": "^2.1.1",
+    "framer-motion": "^10.16.16",
+    "gsap": "^3.13.0",
+    "lucide-react": "^0.294.0",
+    "mammoth": "^1.11.0",
+    "next": "15.0.3",
+    "react": "^18",
+    "react-color-palette": "^7.3.1",
+    "react-dom": "^18",
+    "react-icons": "^5.5.0",
+    "tailwind-merge": "^3.3.1",
+    "typescript": "^5"
+  },
+  "devDependencies": {
+    "eslint": "^8",
+    "eslint-config-next": "15.0.3"
+  }
+}

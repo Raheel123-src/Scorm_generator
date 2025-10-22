@@ -93,6 +93,7 @@ export interface FlashcardData {
     frontTitle: string;
     frontDescription: string;
     back: string;
+    image?: string; // Base64 data URL for card image
   }[];
 }
 

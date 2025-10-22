@@ -20,7 +20,8 @@ import {
   Target,
   ChevronDown,
     Clock,
-    Droplets
+    Droplets,
+    MoreHorizontal
     } from 'lucide-react'
   import Link from 'next/link'
   import AlignmentDropdown from '@/components/AlignmentDropdown'
@@ -62,15 +63,6 @@ export default function EditorPage() {
     },
     {
       id: '2',
-      type: 'quiz',
-      title: 'Knowledge Check',
-      data: {
-        title: 'Knowledge Check',
-        questions: []
-      }
-    },
-    {
-      id: '3',
       type: 'course-completed',
       title: 'Course Completed',
       data: {
@@ -97,6 +89,9 @@ export default function EditorPage() {
   })
   const [showAlignmentDropdown, setShowAlignmentDropdown] = useState(false)
   const [textAlignment, setTextAlignment] = useState<'left' | 'center' | 'right'>('center')
+  const [includeVoice, setIncludeVoice] = useState(false)
+  const [draggedItem, setDraggedItem] = useState<string | null>(null)
+  const [dragOverItem, setDragOverItem] = useState<string | null>(null)
   const alignmentButtonRef = useRef<HTMLButtonElement>(null)
 
   const addContentBlock = (type: string) => {
@@ -106,7 +101,20 @@ export default function EditorPage() {
       title: getBlockTitle(type),
       data: getDefaultData(type)
     }
-    setContentBlocks([...contentBlocks, newBlock])
+    
+    // Find the course-completed block index
+    const courseCompletedIndex = contentBlocks.findIndex(block => block.type === 'course-completed')
+    
+    if (courseCompletedIndex === -1) {
+      // If no course-completed block found, just add to the end
+      setContentBlocks([...contentBlocks, newBlock])
+    } else {
+      // Insert before the course-completed block
+      const newBlocks = [...contentBlocks]
+      newBlocks.splice(courseCompletedIndex, 0, newBlock)
+      setContentBlocks(newBlocks)
+    }
+    
     setActiveBlock(newBlock.id)
   }
 
@@ -160,6 +168,73 @@ export default function EditorPage() {
           : block
       )
     )
+  }
+
+  const handleDragStart = (e: React.DragEvent, blockId: string) => {
+    setDraggedItem(blockId)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e: React.DragEvent, blockId: string) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverItem(blockId)
+  }
+
+  const handleDragLeave = () => {
+    setDragOverItem(null)
+  }
+
+  const handleDrop = (e: React.DragEvent, targetBlockId: string) => {
+    e.preventDefault()
+    
+    if (!draggedItem || draggedItem === targetBlockId) {
+      setDraggedItem(null)
+      setDragOverItem(null)
+      return
+    }
+
+    // Find the course-completed and welcome blocks
+    const courseCompletedBlock = contentBlocks.find(block => block.type === 'course-completed')
+    const welcomeBlock = contentBlocks.find(block => block.type === 'welcome')
+    
+    // Don't allow dropping on course-completed/welcome or dragging course-completed/welcome
+    if (targetBlockId === courseCompletedBlock?.id || draggedItem === courseCompletedBlock?.id ||
+        targetBlockId === welcomeBlock?.id || draggedItem === welcomeBlock?.id) {
+      setDraggedItem(null)
+      setDragOverItem(null)
+      return
+    }
+
+    const draggedIndex = contentBlocks.findIndex(block => block.id === draggedItem)
+    const targetIndex = contentBlocks.findIndex(block => block.id === targetBlockId)
+    
+    if (draggedIndex === -1 || targetIndex === -1) return
+
+    const newBlocks = [...contentBlocks]
+    const draggedBlock = newBlocks[draggedIndex]
+    
+    // Remove dragged block
+    newBlocks.splice(draggedIndex, 1)
+    
+    // Insert at new position
+    const newTargetIndex = targetIndex > draggedIndex ? targetIndex - 1 : targetIndex
+    newBlocks.splice(newTargetIndex, 0, draggedBlock)
+    
+    // Update order numbers
+    const updatedBlocks = newBlocks.map((block, index) => ({
+      ...block,
+      order: index + 1
+    }))
+    
+    setContentBlocks(updatedBlocks)
+    setDraggedItem(null)
+    setDragOverItem(null)
+  }
+
+  const handleDragEnd = () => {
+    setDraggedItem(null)
+    setDragOverItem(null)
   }
 
   // Custom hook for contentEditable elements
@@ -232,6 +307,280 @@ export default function EditorPage() {
       }
       return newBlocks
     })
+  }
+
+  // Helper function to convert blob URL to data URL
+  const convertBlobToDataURL = async (blobUrl: string): Promise<string> => {
+    try {
+      const response = await fetch(blobUrl)
+      const blob = await response.blob()
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = reject
+        reader.readAsDataURL(blob)
+      })
+    } catch (error) {
+      console.error('Error converting blob to data URL:', error)
+      return blobUrl // Return original URL if conversion fails
+    }
+  }
+
+
+  const generateSCORMPackage = async (includeTTS: boolean) => {
+    try {
+      setLoading(true)
+      
+      // Check if user is authenticated
+      const token = localStorage.getItem('authToken')
+      const user = localStorage.getItem('user')
+      
+      console.log('Auth token found:', !!token)
+      console.log('User data found:', !!user)
+      console.log('Token preview:', token ? token.substring(0, 20) + '...' : 'No token')
+      
+      if (!token || !user) {
+        alert('Please log in to generate SCORM packages')
+        window.location.href = '/login'
+        return
+      }
+
+      console.log('Starting SCORM package generation...')
+      console.log('Content blocks:', contentBlocks.length)
+      console.log('Content blocks data:', contentBlocks)
+      
+      // Process content blocks with required fields and convert blob URLs
+      const processedBlocks = await Promise.all(contentBlocks.map(async (block, index) => {
+        const processedBlock = {
+          ...block,
+          order: index + 1
+        }
+        
+        // Ensure required fields are present
+        if (!processedBlock.id) {
+          processedBlock.id = `block_${index + 1}_${Date.now()}`
+        }
+        if (!processedBlock.type) {
+          processedBlock.type = 'text-image' // default type
+        }
+        if (!processedBlock.title) {
+          processedBlock.title = `Slide ${index + 1}`
+        }
+        
+        // Convert blob URLs to data URLs for video content
+        if (block.type === 'video' && block.data.videoUrl && block.data.videoUrl.startsWith('blob:')) {
+          console.log('Converting blob URL to data URL:', block.data.videoUrl)
+          try {
+            const dataURL = await convertBlobToDataURL(block.data.videoUrl)
+            processedBlock.data.videoUrl = dataURL
+            console.log('Blob URL converted successfully')
+            console.log('Converted data URL length:', dataURL.length)
+            console.log('Converted data URL starts with data:', dataURL.startsWith('data:'))
+          } catch (error) {
+            console.error('Failed to convert blob URL:', error)
+            // Keep original blob URL if conversion fails
+          }
+        } else if (block.type === 'video' && block.data.videoUrl) {
+          console.log(`Video block ${block.id} already has data URL: ${block.data.videoUrl.substring(0, 50)}...`)
+        }
+        
+        // Convert blob URLs to data URLs for document content
+        if (block.type === 'document' && block.data.documentUrl && block.data.documentUrl.startsWith('blob:')) {
+          console.log('Converting document blob URL to data URL:', block.data.documentUrl)
+          try {
+            const dataURL = await convertBlobToDataURL(block.data.documentUrl)
+            processedBlock.data.documentUrl = dataURL
+            console.log('Document blob URL converted successfully')
+            console.log('Converted document data URL length:', dataURL.length)
+            console.log('Converted document data URL starts with data:', dataURL.startsWith('data:'))
+          } catch (error) {
+            console.error('Failed to convert document blob URL:', error)
+            // Keep original blob URL if conversion fails
+          }
+        } else if (block.type === 'document' && block.data.documentUrl) {
+          console.log(`Document block ${block.id} already has data URL: ${block.data.documentUrl.substring(0, 50)}...`)
+        }
+        
+        return processedBlock
+      }))
+      
+      console.log('Processed blocks:', processedBlocks)
+      
+      // Debug: Check each processed block for video data
+      processedBlocks.forEach((block, index) => {
+        if (block.type === 'video') {
+          console.log(`🔍 Processed block ${index}: id=${block.id}, type=${block.type}, hasVideoUrl=${!!block.data.videoUrl}`)
+          if (block.data.videoUrl) {
+            console.log(`   - Video URL type: ${block.data.videoUrl.startsWith('blob:') ? 'blob' : block.data.videoUrl.startsWith('data:') ? 'data' : 'other'}`)
+            console.log(`   - Video URL length: ${block.data.videoUrl.length}`)
+          }
+        }
+      })
+      
+      // Extract video and document data BEFORE saving to backend (since backend strips large data)
+      const videoData: { [key: string]: string } = {}
+      const documentData: { [key: string]: string } = {}
+      
+      processedBlocks.forEach(block => {
+        console.log(`🔍 Checking block ${block.id}: type=${block.type}, hasVideoUrl=${!!block.data.videoUrl}, hasDocumentUrl=${!!block.data.documentUrl}`)
+        
+        if (block.type === 'video' && block.data.videoUrl) {
+          // Check if it's a data URL or blob URL
+          if (block.data.videoUrl.startsWith('data:') || block.data.videoUrl.startsWith('blob:')) {
+            videoData[block.id] = block.data.videoUrl
+            console.log(`📹 Extracted video data for block ${block.id}: ${block.data.videoUrl.substring(0, 50)}...`)
+          }
+        }
+        
+        if (block.type === 'document' && block.data.documentUrl) {
+          // Check if it's a data URL or blob URL
+          if (block.data.documentUrl.startsWith('data:') || block.data.documentUrl.startsWith('blob:')) {
+            documentData[block.id] = block.data.documentUrl
+            console.log(`📄 Extracted document data for block ${block.id}: ${block.data.documentUrl.substring(0, 50)}...`)
+          }
+        }
+      })
+      
+      console.log(`📹 Total video data extracted: ${Object.keys(videoData).length} videos`)
+      console.log(`📄 Total document data extracted: ${Object.keys(documentData).length} documents`)
+      console.log(`📹 Video data object:`, videoData)
+      console.log(`📄 Document data object:`, documentData)
+      
+      // FORCE ADD VIDEO DATA IF NONE FOUND - DEBUGGING
+      if (Object.keys(videoData).length === 0) {
+        console.log(`🚨 NO VIDEO DATA FOUND - CHECKING ALL BLOCKS:`)
+        processedBlocks.forEach((block, index) => {
+          console.log(`Block ${index}: id=${block.id}, type=${block.type}, videoUrl=${block.data.videoUrl ? 'EXISTS' : 'MISSING'}`)
+          if (block.data.videoUrl) {
+            console.log(`  - Video URL: ${block.data.videoUrl.substring(0, 100)}...`)
+          }
+        })
+      }
+      
+      // Test backend connection first
+      console.log('Testing backend connection...')
+      const testResponse = await fetch('http://localhost:5001/api/test')
+      if (!testResponse.ok) {
+        throw new Error('Backend server is not responding. Please check if the server is running.')
+      }
+      console.log('Backend connection successful')
+      
+      // First save the current content
+      console.log('Saving SCORM package...')
+      const response = await fetch('http://localhost:5001/api/scorm', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          title: scormTitle,
+          description: 'Generated SCORM package',
+          content: processedBlocks
+        })
+      })
+
+      console.log('Save response status:', response.status)
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }))
+        console.error('Save error:', errorData)
+        throw new Error(`Failed to save SCORM package: ${errorData.message || 'Unknown error'}`)
+      }
+
+      const { id } = await response.json()
+      console.log('SCORM package saved with ID:', id)
+
+      // Generate SCORM package (direct download)
+      console.log('Generating SCORM package...')
+      console.log(`📹 Using extracted video data: ${Object.keys(videoData).length} videos`)
+      console.log(`📹 Video data being sent:`, videoData)
+      
+      const requestBody = {
+        includeTTS,
+        videoData,
+        documentData
+      }
+      console.log(`📹 Full request body:`, requestBody)
+      
+      // EMERGENCY FALLBACK - if no video or document data found, try to extract from original contentBlocks
+      if (Object.keys(videoData).length === 0 || Object.keys(documentData).length === 0) {
+        console.log(`🚨 EMERGENCY FALLBACK - extracting from original contentBlocks`)
+        const fallbackVideoData: { [key: string]: string } = {}
+        const fallbackDocumentData: { [key: string]: string } = {}
+        
+        contentBlocks.forEach(block => {
+          if (block.type === 'video' && block.data.videoUrl) {
+            fallbackVideoData[block.id] = block.data.videoUrl
+            console.log(`📹 Fallback extracted: ${block.id} -> ${block.data.videoUrl.substring(0, 50)}...`)
+          }
+          if (block.type === 'document' && block.data.documentUrl) {
+            fallbackDocumentData[block.id] = block.data.documentUrl
+            console.log(`📄 Fallback extracted: ${block.id} -> ${block.data.documentUrl.substring(0, 50)}...`)
+          }
+        })
+        
+        if (Object.keys(fallbackVideoData).length > 0) {
+          requestBody.videoData = fallbackVideoData
+          console.log(`📹 Using fallback video data:`, fallbackVideoData)
+        }
+        
+        if (Object.keys(fallbackDocumentData).length > 0) {
+          requestBody.documentData = fallbackDocumentData
+          console.log(`📄 Using fallback document data:`, fallbackDocumentData)
+        }
+        
+        // ULTIMATE FALLBACK - add test data if still none found
+        if (Object.keys(fallbackVideoData).length === 0 && Object.keys(fallbackDocumentData).length === 0) {
+          console.log(`🚨 ULTIMATE FALLBACK - adding test data`)
+          requestBody.videoData = {
+            "test_video": "data:video/mp4;base64,test"
+          }
+          requestBody.documentData = {
+            "test_document": "data:application/pdf;base64,test"
+          }
+          console.log(`📹 Using test data:`, requestBody.videoData, requestBody.documentData)
+        }
+      }
+      
+      const generateResponse = await fetch(`http://localhost:5001/api/scorm/${id}/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(requestBody)
+      })
+
+      console.log('Generate response status:', generateResponse.status)
+      
+      if (!generateResponse.ok) {
+        const errorData = await generateResponse.json().catch(() => ({ message: 'Unknown error' }))
+        console.error('Generate error:', errorData)
+        throw new Error(`Failed to generate SCORM package: ${errorData.message || 'Unknown error'}`)
+      }
+
+      // Download the SCORM package directly
+      console.log('Downloading SCORM package...')
+      const blob = await generateResponse.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${scormTitle.replace(/[^a-zA-Z0-9]/g, '_')}.zip`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      console.log('SCORM package downloaded successfully')
+      alert(`SCORM package generated successfully${includeTTS ? ' with AI voice narration' : ''}!`)
+    } catch (error) {
+      console.error('Error generating SCORM package:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Please try again.'
+      alert(`Failed to generate SCORM package: ${errorMessage}`)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const getBlockIcon = (type: string) => {
@@ -765,6 +1114,66 @@ export default function EditorPage() {
             <Save size={16} />
             {loading ? 'Saving...' : 'Save'}
           </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <label style={{ fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
+                Learn with Voice
+              </label>
+              <button
+                onClick={() => setIncludeVoice(!includeVoice)}
+                disabled={loading}
+                style={{
+                  width: '44px',
+                  height: '24px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  background: includeVoice ? '#059669' : '#d1d5db',
+                  position: 'relative',
+                  transition: 'all 0.2s',
+                  opacity: loading ? 0.7 : 1
+                }}
+              >
+                <div
+                  style={{
+                    width: '20px',
+                    height: '20px',
+                    borderRadius: '50%',
+                    background: 'white',
+                    position: 'absolute',
+                    top: '2px',
+                    left: includeVoice ? '22px' : '2px',
+                    transition: 'all 0.2s',
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
+                  }}
+                />
+              </button>
+            </div>
+            <button
+              onClick={() => generateSCORMPackage(includeVoice)}
+              disabled={loading}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                background: loading ? '#9ca3af' : includeVoice 
+                  ? 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)' 
+                  : 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                color: 'white',
+                padding: '0.75rem 1.5rem',
+                borderRadius: '0.5rem',
+                border: 'none',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: '500',
+                transition: 'all 0.2s',
+                opacity: loading ? 0.7 : 1
+              }}
+            >
+              {includeVoice ? <Droplets size={16} /> : <FileText size={16} />}
+              {includeVoice ? 'Generate with Voice' : 'Generate SCORM'}
+            </button>
+          </div>
           <button 
             onClick={() => setPreviewMode(!previewMode)}
             style={{
@@ -826,7 +1235,6 @@ export default function EditorPage() {
               </h4>
               <div className="block-type-grid">
                 {[
-                  { type: 'welcome', label: 'Welcome Page', icon: FileText, color: '#9333ea' },
                   { type: 'quiz', label: 'Quiz', icon: HelpCircle, color: '#059669' },
                   { type: 'text-image', label: 'Text & Image', icon: Image, color: '#dc2626' },
                   { type: 'video', label: 'Video', icon: Video, color: '#7c3aed' },
@@ -869,18 +1277,43 @@ export default function EditorPage() {
                 <motion.div
                   key={block.id}
                   initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
+                  animate={{ 
+                    opacity: 1, 
+                    x: 0,
+                    scale: draggedItem === block.id ? 1.05 : 1,
+                    rotate: draggedItem === block.id ? 2 : 0
+                  }}
                   transition={{ duration: 0.3, delay: index * 0.1 }}
-                  className={`content-block-preview ${activeBlock === block.id ? 'active' : ''}`}
+                  className={`content-block-preview ${activeBlock === block.id ? 'active' : ''} ${dragOverItem === block.id ? 'drag-over' : ''}`}
                   data-type={block.type}
+                  draggable={block.type !== 'course-completed' && block.type !== 'welcome'}
+                  onDragStart={(e) => handleDragStart(e, block.id)}
+                  onDragOver={(e) => handleDragOver(e, block.id)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, block.id)}
+                  onDragEnd={handleDragEnd}
                   onClick={() => {
                     setActiveBlock(block.id)
                     setPreviewMode(false)
                     setHoveredType(null)
                   }}
+                  style={{
+                    cursor: (block.type !== 'course-completed' && block.type !== 'welcome') ? 'grab' : 'default',
+                    opacity: draggedItem === block.id ? 0.5 : 1,
+                    transform: draggedItem === block.id ? 'rotate(2deg)' : 'none'
+                  }}
                 >
                   <div className="content-block-number">
-                    {index + 1}
+                    {(block.type !== 'course-completed' && block.type !== 'welcome') ? (
+                      <div className="number-or-dots">
+                        <span className="slide-number">{index + 1}</span>
+                        <div className="drag-dots">
+                          <MoreHorizontal size={16} />
+                        </div>
+                      </div>
+                    ) : (
+                      index + 1
+                    )}
                   </div>
                   <div className="mini-preview-container">
                     {block.type === 'welcome' && (

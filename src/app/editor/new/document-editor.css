@@ -45,6 +45,17 @@
   background: #f3f4f6;
 }
 
+.enforce-completion-btn.active {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: white;
+}
+
+.enforce-completion-btn.active:hover {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+
 .replace-document-btn {
   display: flex;
   align-items: center;

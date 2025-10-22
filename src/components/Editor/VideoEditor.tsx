@@ -73,9 +73,12 @@ export default function VideoEditor({ data, onChange }: VideoEditorProps) {
       {/* Top Section */}
       <div className="video-editor-header">
         <div className="video-controls">
-          <button className="enforce-completion-btn">
+          <button 
+            className={`enforce-completion-btn ${formData.enforceCompletion ? 'active' : ''}`}
+            onClick={() => handleChange('enforceCompletion', !formData.enforceCompletion)}
+          >
             <CheckSquare size={16} />
-            Enforce completion
+            {formData.enforceCompletion ? 'Enforce completion' : 'Allow skip'}
           </button>
           <button className="replace-video-btn" onClick={() => document.getElementById('video-upload')?.click()}>
             <RotateCcw size={16} />

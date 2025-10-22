@@ -42,6 +42,17 @@ export default function FlashcardEditor({ data, onChange }: FlashcardEditorProps
   const displayDropdownRef = useRef<HTMLDivElement>(null)
   const visibilityDropdownRef = useRef<HTMLDivElement>(null)
 
+  // Initialize cardImages from persisted data
+  useEffect(() => {
+    const initialImages: {[key: string]: string} = {}
+    formData.cards.forEach(card => {
+      if (card.image) {
+        initialImages[card.id] = card.image
+      }
+    })
+    setCardImages(initialImages)
+  }, [formData.cards])
+
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -107,6 +118,8 @@ export default function FlashcardEditor({ data, onChange }: FlashcardEditorProps
           ...prev,
           [cardId]: imageUrl
         }))
+        // Also update the card data to persist the image
+        updateCard(cardId, { image: imageUrl })
       }
       reader.readAsDataURL(file)
     }
@@ -254,9 +267,9 @@ export default function FlashcardEditor({ data, onChange }: FlashcardEditorProps
                 <div className="card-front">
                   {displayOptions[card.id]?.image !== false && (
                     <div className="card-image-container">
-                      {cardImages[card.id] ? (
+                      {(cardImages[card.id] || card.image) ? (
                         <img 
-                          src={cardImages[card.id]} 
+                          src={cardImages[card.id] || card.image} 
                           alt="Card image" 
                           className="card-image"
                         />
@@ -271,6 +284,7 @@ export default function FlashcardEditor({ data, onChange }: FlashcardEditorProps
                         accept="image/*"
                         className="card-image-input"
                         onChange={(e) => handleImageUpload(card.id, e)}
+                        style={{ display: flippedCards.has(card.id) ? 'none' : 'block' }}
                       />
                       </div>
                   )}

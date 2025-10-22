@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { CourseCompletedData } from '@/types'
-import { ChevronDown, Image, Settings, List, Droplets, ChevronLeft, Square, AlignLeft, AlignRight, Type } from 'lucide-react'
+import { ChevronDown, Image, Settings, List, Droplets, Square, AlignLeft, AlignRight, Type } from 'lucide-react'
 import './course-completed-editor.css'
 
 interface CourseCompletedEditorProps {
@@ -508,12 +508,6 @@ const CourseCompletedEditor = ({ data, onChange }: CourseCompletedEditorProps) =
         </div>
       </div>
 
-      {/* Left Navigation */}
-      <div className="left-nav">
-        <button className="nav-btn">
-          <ChevronLeft size={16} />
-        </button>
-      </div>
 
     </div>
   )

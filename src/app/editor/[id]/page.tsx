@@ -4,7 +4,6 @@ import { motion } from 'framer-motion'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { 
-  Save, 
   Eye, 
   Plus, 
   FileText, 
@@ -97,16 +96,6 @@ export default function SCORMEditorPage({ params }: { params: { id: string } }) 
     }
   }
 
-  const handleSave = async () => {
-    setLoading(true)
-    try {
-      console.log('Saving SCORM:', { title: scormTitle, contentBlocks })
-      // Implement save logic
-      await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate API call
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handlePreview = () => {
     console.log('Previewing SCORM')
@@ -188,28 +177,6 @@ export default function SCORMEditorPage({ params }: { params: { id: string } }) 
             />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <button
-              onClick={handleSave}
-              disabled={loading}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                background: loading ? '#9ca3af' : 'white',
-                color: loading ? 'white' : '#374151',
-                padding: '0.75rem 1.5rem',
-                borderRadius: '0.5rem',
-                border: '1px solid #d1d5db',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: '0.875rem',
-                fontWeight: '500',
-                transition: 'all 0.2s',
-                opacity: loading ? 0.7 : 1
-              }}
-            >
-              <Save size={16} />
-              {loading ? 'Saving...' : 'Save'}
-            </button>
             <button
               onClick={handlePreview}
               style={{

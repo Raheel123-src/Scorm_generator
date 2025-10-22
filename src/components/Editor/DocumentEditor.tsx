@@ -186,9 +186,12 @@ export default function DocumentEditor({ data, onChange }: DocumentEditorProps) 
       {/* Top Section */}
       <div className="document-editor-header">
         <div className="document-controls">
-          <button className="enforce-completion-btn">
+          <button 
+            className={`enforce-completion-btn ${formData.enforceCompletion ? 'active' : ''}`}
+            onClick={() => handleChange('enforceCompletion', !formData.enforceCompletion)}
+          >
             <CheckSquare size={16} />
-            Enforce completion
+            {formData.enforceCompletion ? 'Enforce completion' : 'Allow skip'}
           </button>
           <button className="replace-document-btn" onClick={() => document.getElementById('document-upload')?.click()}>
             <RotateCcw size={16} />

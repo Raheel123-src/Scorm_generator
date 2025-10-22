@@ -876,3 +876,66 @@
   background: #e5e7eb;
   transform: scale(1.05);
 }
+
+/* Drag and Drop Styles */
+.content-block-preview {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.number-or-dots {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.slide-number {
+  transition: opacity 0.3s ease;
+}
+
+.drag-dots {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  color: #000000;
+  cursor: grab;
+}
+
+.content-block-preview:hover .slide-number {
+  opacity: 0;
+}
+
+.content-block-preview:hover .drag-dots {
+  opacity: 1;
+}
+
+.drag-dots:hover {
+  color: #000000;
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.content-block-preview.drag-over {
+  border: 2px dashed #3b82f6;
+  background: rgba(59, 130, 246, 0.05);
+  transform: scale(1.02);
+}
+
+.content-block-preview:active {
+  cursor: grabbing;
+}
+
+.content-block-preview[data-type="course-completed"],
+.content-block-preview[data-type="welcome"] {
+  cursor: default !important;
+}
+
+.content-block-preview[data-type="course-completed"]:hover .drag-handle,
+.content-block-preview[data-type="welcome"]:hover .drag-handle {
+  display: none;
+}

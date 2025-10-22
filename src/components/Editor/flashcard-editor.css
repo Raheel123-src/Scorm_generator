@@ -296,6 +296,8 @@
   border-radius: 16px;
   padding: 20px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  pointer-events: auto;
+  z-index: 2;
 }
 
 .card-answer {
@@ -360,6 +362,11 @@
   opacity: 0;
   cursor: pointer;
   z-index: 1;
+}
+
+.flashcard-card.flipped .card-image-input {
+  pointer-events: none;
+  z-index: -1;
 }
 
 .card-text {

@@ -43,13 +43,18 @@ const HotspotImageEditor = ({ data, onChange }: HotspotImageEditorProps) => {
   const handleImageClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (isAddingHotspot) {
       const rect = event.currentTarget.getBoundingClientRect()
+      // Calculate position relative to the image container, not the entire div
       const x = ((event.clientX - rect.left) / rect.width) * 100
       const y = ((event.clientY - rect.top) / rect.height) * 100
       
+      // Ensure position is within bounds
+      const clampedX = Math.max(0, Math.min(100, x))
+      const clampedY = Math.max(0, Math.min(100, y))
+      
       const newHotspot = {
         id: `hotspot-${Date.now()}`,
-        x,
-        y,
+        x: clampedX,
+        y: clampedY,
         title: 'New Hotspot',
         description: 'Click to edit'
       }
@@ -136,7 +141,7 @@ const HotspotImageEditor = ({ data, onChange }: HotspotImageEditorProps) => {
   }, [])
 
   return (
-    <div className="hotspot-image-editor">
+    <div className={`hotspot-image-editor ${isAddingHotspot ? 'hotspot-adding-mode' : ''}`}>
       {/* Top Bar */}
       <div className="top-bar">
         <div className="top-bar-left">
@@ -218,7 +223,7 @@ const HotspotImageEditor = ({ data, onChange }: HotspotImageEditorProps) => {
         </div>
 
         {/* Image Container */}
-        <div className="image-container" onClick={handleImageClick}>
+        <div className={`image-container ${isAddingHotspot ? 'hotspot-adding-mode' : ''}`} onClick={handleImageClick}>
           {formData.imageUrl ? (
             <div className="image-wrapper">
               <img 

@@ -823,6 +823,40 @@ async function generateSlideHTML(block, index, totalSlides, includeTTS) {
             });
         }
         
+        // Accordion functionality
+        function toggleAccordion(index) {
+            const item = document.querySelectorAll('.accordion-item')[index];
+            const body = item.querySelector('.accordion-item-body');
+            const icon = item.querySelector('.accordion-icon-plus');
+            const iconContainer = item.querySelector('.accordion-item-icon');
+            
+            if (item.classList.contains('active')) {
+                // Closing animation
+                item.classList.remove('active');
+                body.classList.add('closing');
+                body.classList.remove('opening');
+                icon.textContent = '+';
+                iconContainer.style.transform = 'rotate(0deg)';
+                
+                setTimeout(() => {
+                    body.style.display = 'none';
+                    body.classList.remove('closing');
+                }, 300);
+            } else {
+                // Opening animation
+                item.classList.add('active');
+                body.style.display = 'block';
+                body.classList.add('opening');
+                body.classList.remove('closing');
+                icon.textContent = '×';
+                iconContainer.style.transform = 'rotate(45deg)';
+                
+                setTimeout(() => {
+                    body.classList.remove('opening');
+                }, 300);
+            }
+        }
+        
         // Hotspot functionality
         function showHotspotInfo(hotspotIndex) {
             const hotspots = ${JSON.stringify(block.data.hotspots)};
@@ -1335,23 +1369,45 @@ function generateHotspotContent(block) {
 }
 
 function generateAccordionContent(block) {
-  const itemsHtml = block.data.items.map((item, index) => `
-    <div class="accordion-item">
-      <div class="accordion-header" onclick="toggleAccordion(${index})">
-        <h3>${item.title}</h3>
-        <span class="accordion-icon">+</span>
+  const itemsHtml = block.data.items.map((item, index) => {
+    // Handle different color storage formats
+    let itemColor = '#3b82f6'; // default color
+    
+    if (item.color) {
+      itemColor = item.color;
+    } else if (block.data.itemColors && block.data.itemColors[item.id]) {
+      itemColor = block.data.itemColors[item.id];
+    } else if (item.colors && item.colors[item.id]) {
+      itemColor = item.colors[item.id];
+    }
+    
+    return `
+    <div class="accordion-item" data-index="${index}">
+      <div class="accordion-item-header" onclick="toggleAccordion(${index})">
+        <div class="accordion-item-icon" style="background-color: ${itemColor};">
+          <span class="accordion-icon-plus">+</span>
+        </div>
+        <div class="accordion-item-content">
+          <div class="accordion-item-title">${item.title}</div>
+        </div>
       </div>
-      <div class="accordion-content">
-        <p>${item.content}</p>
+      <div class="accordion-item-body">
+        <div class="accordion-item-description">${item.description || item.content || 'Add a description'}</div>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
   
   return `
     <div class="accordion-slide">
-      <h1 class="accordion-title">${block.data.title || 'Accordion Content'}</h1>
-      <div class="accordion-container">
-        ${itemsHtml}
+      <div class="accordion-content">
+        <div class="accordion-main">
+          <h1 class="accordion-title">${block.data.title || 'Accordion Content'}</h1>
+          ${block.data.description ? `<div class="accordion-description">${block.data.description}</div>` : ''}
+          <div class="accordion-items">
+            ${itemsHtml}
+          </div>
+        </div>
       </div>
     </div>
   `;

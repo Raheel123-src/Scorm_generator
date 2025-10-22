@@ -1346,79 +1346,229 @@ body {
 
 /* Accordion Styles */
 .accordion-slide {
-  padding: 2rem;
-  max-width: 1200px;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #f8fafc;
+  position: relative;
+  overflow: hidden;
+}
+
+.accordion-content {
+  flex: 1;
+  display: flex;
+  padding: 24px;
+  overflow-y: auto;
+  position: relative;
+}
+
+.accordion-main {
+  flex: 1;
+  max-width: 800px;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 .accordion-title {
-  font-size: 2.5rem;
-  font-weight: bold;
-  margin-bottom: 2rem;
+  font-size: 2rem;
+  font-weight: 700;
   color: #1f2937;
-  text-align: center;
+  margin: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  padding: 0;
+  width: 100%;
+  cursor: text;
 }
 
-.accordion-container {
-  max-width: 800px;
-  margin: 0 auto;
+.accordion-title:focus {
+  outline: none;
+}
+
+.accordion-description {
+  font-size: 1.125rem;
+  color: #6b7280;
+  margin: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  cursor: text;
+  min-height: 1.5rem;
+  font-weight: 400;
+  width: 100%;
+}
+
+.accordion-description:focus {
+  outline: none;
+  color: #374151;
+}
+
+.accordion-description:empty:before {
+  content: "Add a description...";
+  color: #9ca3af;
+}
+
+/* Accordion Items */
+.accordion-items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .accordion-item {
   background: white;
-  border-radius: 8px;
-  margin-bottom: 1rem;
+  border-radius: 12px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
+  overflow: visible;
+  transition: all 0.3s ease-in-out;
+  position: relative;
 }
 
-.accordion-header {
-  padding: 1.5rem;
-  cursor: pointer;
+.accordion-item-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  background: #f8fafc;
-  transition: all 0.2s;
+  padding: 16px 28px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+  min-height: 80px;
+  height: auto;
 }
 
-.accordion-header:hover {
-  background: #e2e8f0;
+
+.accordion-item:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.accordion-header h3 {
-  margin: 0;
-  font-size: 1.125rem;
+.accordion-item-icon {
+  width: 48px;
+  height: 48px;
+  background: #3b82f6;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 18px;
   font-weight: 600;
-  color: #1f2937;
+  margin-right: 20px;
+  flex-shrink: 0;
+  transition: all 0.3s ease-in-out;
+  transform-origin: center;
 }
 
-.accordion-icon {
-  font-size: 1.5rem;
-  color: #6b7280;
-  transition: transform 0.2s;
+.accordion-icon-plus {
+  font-size: 24px;
+  font-weight: 600;
+  animation: rotateIn 0.3s ease-in-out;
+  transition: all 0.3s ease-in-out;
 }
 
-.accordion-item.active .accordion-icon {
-  transform: rotate(45deg);
+@keyframes rotateIn {
+  from {
+    opacity: 0;
+    transform: rotate(-90deg) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+  }
 }
 
-.accordion-content {
-  padding: 0 1.5rem;
-  max-height: 0;
+.accordion-item-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.accordion-item-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #374151;
+  border: none;
+  background: transparent;
+  outline: none;
+  cursor: text;
+  padding: 0;
+  width: 100%;
+  line-height: 1.4;
+}
+
+.accordion-item-title:focus {
+  outline: none;
+}
+
+.accordion-item-body {
+  padding: 24px 28px 28px 88px;
+  border-top: 1px solid #f3f4f6;
+  background: #fafbfc;
   overflow: hidden;
-  transition: all 0.3s;
+  transition: all 0.3s ease-in-out;
+  display: none;
 }
 
-.accordion-item.active .accordion-content {
-  padding: 1.5rem;
-  max-height: 500px;
+.accordion-item-body.opening {
+  animation: slideDown 0.3s ease-out;
 }
 
-.accordion-content p {
-  margin: 0;
-  color: #4b5563;
+.accordion-item-body.closing {
+  animation: slideUp 0.3s ease-in-out;
+}
+
+.accordion-item-description {
+  font-size: 16px;
+  color: #6b7280;
+  border: none;
+  background: transparent;
+  outline: none;
+  cursor: text;
+  padding: 0;
+  width: 100%;
+  min-height: 1.5rem;
   line-height: 1.6;
+}
+
+.accordion-item-description:focus {
+  outline: none;
+  color: #374151;
+}
+
+.accordion-item-description:empty:before {
+  content: "Add a description";
+  color: #9ca3af;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+    max-height: 0;
+    padding: 0 28px;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 300px;
+    padding: 24px 28px 28px 88px;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 300px;
+    padding: 24px 28px 28px 88px;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-20px);
+    max-height: 0;
+    padding: 0 28px;
+  }
 }
 
 /* Checklist Styles */

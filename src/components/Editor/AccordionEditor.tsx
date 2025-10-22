@@ -28,7 +28,7 @@ const AccordionEditor = ({ data, onChange }: AccordionEditorProps) => {
   })
   const [showItemMenu, setShowItemMenu] = useState<string | null>(null)
   const [showItemColorPicker, setShowItemColorPicker] = useState<string | null>(null)
-  const [itemColors, setItemColors] = useState<Record<string, string>>({})
+  const [itemColors, setItemColors] = useState<Record<string, string>>(data.itemColors || {})
   const [currentItemHue, setCurrentItemHue] = useState(240)
   const [currentItemSaturation, setCurrentItemSaturation] = useState(100)
   const [currentItemBrightness, setCurrentItemBrightness] = useState(50)
@@ -78,13 +78,13 @@ const AccordionEditor = ({ data, onChange }: AccordionEditorProps) => {
   }, [isDraggingItem, dragTypeItem, currentItemHue, currentItemSaturation, currentItemBrightness])
 
   const handleTitleChange = (e: React.FocusEvent<HTMLHeadingElement>) => {
-    const updatedData = { ...formData, title: e.currentTarget.textContent || '' }
+    const updatedData = { ...formData, title: e.currentTarget.textContent || '', itemColors }
     setFormData(updatedData)
     onChange(updatedData)
   }
 
   const handleDescriptionChange = (e: React.FocusEvent<HTMLDivElement>) => {
-    const updatedData = { ...formData, description: e.currentTarget.textContent || '' }
+    const updatedData = { ...formData, description: e.currentTarget.textContent || '', itemColors }
     setFormData(updatedData)
     onChange(updatedData)
   }
@@ -96,7 +96,7 @@ const AccordionEditor = ({ data, onChange }: AccordionEditorProps) => {
       description: '',
       isExpanded: false
     }
-    const updatedData = { ...formData, items: [...formData.items, newItem] }
+    const updatedData = { ...formData, items: [...formData.items, newItem], itemColors }
     setFormData(updatedData)
     onChange(updatedData)
   }
@@ -105,14 +105,14 @@ const AccordionEditor = ({ data, onChange }: AccordionEditorProps) => {
     const updatedItems = formData.items.map(item =>
         item.id === id ? { ...item, [field]: value } : item
       )
-    const updatedData = { ...formData, items: updatedItems }
+    const updatedData = { ...formData, items: updatedItems, itemColors }
     setFormData(updatedData)
     onChange(updatedData)
   }
 
   const deleteItem = (id: string) => {
     const updatedItems = formData.items.filter(item => item.id !== id)
-    const updatedData = { ...formData, items: updatedItems }
+    const updatedData = { ...formData, items: updatedItems, itemColors }
     setFormData(updatedData)
     onChange(updatedData)
   }
@@ -230,7 +230,13 @@ const AccordionEditor = ({ data, onChange }: AccordionEditorProps) => {
 
   const updateItemColorFromHSL = (itemId: string) => {
     const hex = hslToHexItem(currentItemHue, currentItemSaturation, currentItemBrightness)
-    setItemColors(prev => ({ ...prev, [itemId]: hex }))
+    const newItemColors = { ...itemColors, [itemId]: hex }
+    setItemColors(newItemColors)
+    
+    // Update formData with the new colors
+    const updatedData = { ...formData, itemColors: newItemColors }
+    setFormData(updatedData)
+    onChange(updatedData)
   }
 
   // Update color in real-time as user drags

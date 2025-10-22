@@ -50,6 +50,7 @@ export interface AccordionData {
     description: string;
     isExpanded: boolean;
   }[];
+  itemColors?: Record<string, string>;
 }
 
 export interface ChecklistData {

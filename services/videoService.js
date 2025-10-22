@@ -146,7 +146,7 @@ class VideoService {
   /**
    * Upload file to S3 using AWS SDK v3
    */
-  async uploadToS3(filePath, fileName) {
+  async uploadToS3(filePath, fileName, contentType = 'video/mp4') {
     try {
       const fileStream = fs.createReadStream(filePath);
       
@@ -156,7 +156,7 @@ class VideoService {
           Bucket: BUCKET_NAME,
           Key: `videos/${fileName}`,
           Body: fileStream,
-          ContentType: 'video/mp4',
+          ContentType: contentType,
           CacheControl: 'max-age=31536000' // Cache for 1 year
         }
       });
@@ -164,7 +164,7 @@ class VideoService {
       const result = await upload.done();
       const s3Url = `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/videos/${fileName}`;
       
-      console.log(`Video uploaded to S3: ${s3Url}`);
+      console.log(`File uploaded to S3: ${s3Url} (Content-Type: ${contentType})`);
       return s3Url;
     } catch (error) {
       console.error('S3 upload error:', error);
@@ -205,6 +205,50 @@ class VideoService {
       console.log(`Video deleted from S3: ${s3Url}`);
     } catch (error) {
       console.error('Error deleting video from S3:', error);
+    }
+  }
+
+  /**
+   * Process and upload document to S3
+   * @param {string} documentDataUrl - Base64 data URL of the document
+   * @param {string} blockId - Unique identifier for the document block
+   * @param {string} fileType - MIME type of the document
+   * @returns {Promise<string>} - S3 URL of the uploaded document
+   */
+  async processAndUploadDocument(documentDataUrl, blockId, fileType) {
+    try {
+      console.log(`Processing document for block ${blockId}`);
+      
+      // Generate unique filename
+      const timestamp = Date.now();
+      const randomId = crypto.randomBytes(8).toString('hex');
+      const fileExtension = fileType === 'application/pdf' ? 'pdf' : 'txt';
+      const fileName = `document_${blockId}_${timestamp}_${randomId}.${fileExtension}`;
+      
+      // Create temporary file paths
+      const tempInputPath = path.join(this.tempDir, `input_${fileName}`);
+      
+      // Convert base64 to file
+      await this.convertBase64ToFile(documentDataUrl, tempInputPath);
+      
+      // Verify file was created and get its size
+      const stats = fs.statSync(tempInputPath);
+      console.log(`📄 Document file created: ${tempInputPath}`);
+      console.log(`📄 File size: ${stats.size} bytes`);
+      console.log(`📄 Content type: ${fileType}`);
+      
+      // Upload to S3 with correct content type
+      const s3Url = await this.uploadToS3(tempInputPath, fileName, fileType);
+      
+      // Cleanup temporary files
+      this.cleanupTempFiles([tempInputPath]);
+      
+      console.log(`Document processed and uploaded: ${s3Url}`);
+      return s3Url;
+      
+    } catch (error) {
+      console.error('Error processing document:', error);
+      throw new Error(`Failed to process document: ${error.message}`);
     }
   }
 

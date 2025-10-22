@@ -6,8 +6,29 @@ const archiver = require('archiver');
 const axios = require('axios');
 const FormData = require('form-data');
 const videoService = require('../services/videoService');
+const documentService = require('../services/documentService');
 
 const router = express.Router();
+
+// Function to fetch text content from S3 URL
+async function fetchTextContent(s3Url) {
+  try {
+    console.log(`📄 Fetching text content from: ${s3Url}`);
+    const response = await axios.get(s3Url, {
+      timeout: 10000,
+      headers: {
+        'Accept': 'text/plain, text/*, */*'
+      }
+    });
+    
+    const content = response.data;
+    console.log(`✅ Text content fetched successfully, length: ${content.length} characters`);
+    return content;
+  } catch (error) {
+    console.error('❌ Error fetching text content:', error.message);
+    return null;
+  }
+}
 
 // Get all SCORM packages for the authenticated user
 router.get('/', async (req, res) => {
@@ -76,7 +97,7 @@ router.post('/', async (req, res) => {
       return res.status(401).json({ message: 'User authentication required' });
     }
 
-    // Process content to remove large video data URLs to avoid MongoDB BSON size limits
+    // Process content to remove large video and document data URLs to avoid MongoDB BSON size limits
     const processedContent = content.map(block => {
       if (block.type === 'video' && block.data && block.data.videoUrl && block.data.videoUrl.startsWith('data:')) {
         // Store only video metadata, not the actual video data
@@ -87,6 +108,17 @@ router.post('/', async (req, res) => {
             // Remove the large data URL, it will be processed during SCORM generation
             videoUrl: 'data:video/mp4;base64,[PROCESSED_DURING_GENERATION]',
             hasVideoData: true // Flag to indicate this block has video data to process
+          }
+        };
+      } else if (block.type === 'document' && block.data && block.data.documentUrl && block.data.documentUrl.startsWith('data:')) {
+        // Store only document metadata, not the actual document data
+        return {
+          ...block,
+          data: {
+            ...block.data,
+            // Remove the large data URL, it will be processed during SCORM generation
+            documentUrl: 'data:application/pdf;base64,[PROCESSED_DURING_GENERATION]',
+            hasDocumentData: true // Flag to indicate this block has document data to process
           }
         };
       }
@@ -257,14 +289,17 @@ Keep it educational but accessible.`;
 router.post('/:id/generate', async (req, res) => {
   try {
     const packageId = req.params.id;
-    const { includeTTS = false, videoData = {} } = req.body;
+    const { includeTTS = false, videoData = {}, documentData = {} } = req.body;
     
     console.log(`\n🎬 SCORM GENERATION REQUEST`);
     console.log(`   - Package ID: ${packageId}`);
     console.log(`   - Include TTS: ${includeTTS}`);
     console.log(`   - Video Data received: ${Object.keys(videoData).length} videos`);
+    console.log(`   - Document Data received: ${Object.keys(documentData).length} documents`);
     console.log(`   - Video Data keys:`, Object.keys(videoData));
+    console.log(`   - Document Data keys:`, Object.keys(documentData));
     console.log(`   - Video Data values:`, Object.values(videoData).map(v => v ? v.substring(0, 50) + '...' : 'null'));
+    console.log(`   - Document Data values:`, Object.values(documentData).map(d => d ? d.substring(0, 50) + '...' : 'null'));
 
     const scormPackage = await SCORMPackage.findOne({ 
       _id: packageId, 
@@ -291,7 +326,7 @@ router.post('/:id/generate', async (req, res) => {
     const audioFiles = [];
     const videoFiles = [];
     let previousContent = '';
-    
+
     // Create a copy of content to process videos
     const processedContent = JSON.parse(JSON.stringify(scormPackage.content));
 
@@ -304,6 +339,53 @@ router.post('/:id/generate', async (req, res) => {
       console.log(`Block ID: ${block.id}`);
       console.log(`Has video data: ${block.data.hasVideoData}`);
       console.log(`Current videoUrl: ${block.data.videoUrl}`);
+      
+      // Process document files for LMS compatibility
+      if (block.type === 'document' && block.data.hasDocumentData) {
+        // Use the original document data from the request
+        const originalDocumentUrl = documentData[block.id];
+        console.log(`📄 Document data for block ${block.id}: ${originalDocumentUrl ? 'EXISTS' : 'NOT FOUND'}`);
+        console.log(`📄 Document URL type: ${originalDocumentUrl ? (originalDocumentUrl.startsWith('data:') ? 'data' : originalDocumentUrl.startsWith('blob:') ? 'blob' : 'other') : 'none'}`);
+        
+        if (originalDocumentUrl && originalDocumentUrl.startsWith('data:')) {
+          try {
+            console.log(`📄 Processing document for block ${block.id}`);
+            
+            // Get DOCX content if available
+            const docxContent = block.data.docxContent || null;
+            
+            // Process and upload document to S3 with enhanced support
+            const documentInfo = await documentService.processAndUploadDocument(
+              originalDocumentUrl, 
+              block.id, 
+              block.data.fileType,
+              docxContent
+            );
+            
+            // Update the block data to reference the S3 URL
+            block.data.documentUrl = documentInfo.s3Url;
+            block.data.fileName = documentInfo.fileName;
+            block.data.fileSize = documentInfo.fileSize;
+            
+            // Store DOCX content if available
+            if (documentInfo.docxContent) {
+              block.data.docxContent = documentInfo.docxContent;
+              block.data.hasParsedContent = true;
+            }
+            
+            console.log(`✅ Document uploaded to S3: ${documentInfo.s3Url}`);
+            console.log(`✅ Document processing info:`, documentInfo);
+          } catch (error) {
+            console.error(`❌ Failed to process document for block ${block.id}:`, error);
+            // Fallback to placeholder
+            block.data.documentUrl = 'assets/document_placeholder.pdf';
+          }
+        } else if (originalDocumentUrl && originalDocumentUrl.startsWith('blob:')) {
+          console.log(`⚠️  Blob URL detected for document - cannot process server-side`);
+          // Fallback to placeholder
+          block.data.documentUrl = 'assets/document_placeholder.pdf';
+        }
+      }
       
       if (block.type === 'video' && block.data.hasVideoData) {
         // Use the original video data from the request
@@ -345,9 +427,11 @@ router.post('/:id/generate', async (req, res) => {
       // Generate HTML content AFTER video processing is complete
       console.log(`\n📝 GENERATING HTML for slide ${i + 1}`);
       console.log(`   - Block videoUrl: ${block.data.videoUrl}`);
+      console.log(`   - Block documentUrl: ${block.data.documentUrl}`);
       console.log(`   - Block type: ${block.type}`);
+      console.log(`   - Block data:`, JSON.stringify(block.data, null, 2));
       
-      const htmlContent = generateSlideHTML(block, i, processedContent.length, includeTTS);
+      const htmlContent = await generateSlideHTML(block, i, processedContent.length, includeTTS);
       
       // Log the generated HTML to see what video URL is being used
       if (block.type === 'video') {
@@ -357,6 +441,26 @@ router.post('/:id/generate', async (req, res) => {
           console.log(`   - Found video source in HTML: ${videoMatch[1]}`);
         } else {
           console.log(`   - ❌ NO VIDEO SOURCE FOUND IN HTML!`);
+        }
+      }
+      
+      // Log the generated HTML to see what document URL is being used
+      if (block.type === 'document') {
+        console.log(`🔍 CHECKING GENERATED HTML for document URL:`);
+        // Check for both iframe and download link patterns
+        const iframeMatch = htmlContent.match(/<iframe[^>]+src="([^"]+)"/);
+        const downloadMatch = htmlContent.match(/<a[^>]+href="([^"]+)"[^>]*class="[^"]*download[^"]*"/);
+        const pdfControlMatch = htmlContent.match(/<a[^>]+href="([^"]+)"[^>]*class="[^"]*pdf-control[^"]*"/);
+        
+        if (iframeMatch) {
+          console.log(`   - Found iframe document source: ${iframeMatch[1]}`);
+        } else if (downloadMatch) {
+          console.log(`   - Found download link source: ${downloadMatch[1]}`);
+        } else if (pdfControlMatch) {
+          console.log(`   - Found PDF control link source: ${pdfControlMatch[1]}`);
+        } else {
+          console.log(`   - ❌ NO DOCUMENT SOURCE FOUND IN HTML!`);
+          console.log(`   - HTML snippet:`, htmlContent.substring(0, 500) + '...');
         }
       }
       
@@ -384,7 +488,7 @@ router.post('/:id/generate', async (req, res) => {
 
     // Generate main entry point - use first slide as entry point
     // Use the processed content (with updated video URLs) for the first slide
-    const firstSlideHTML = generateSlideHTML(processedContent[0], 0, processedContent.length, includeTTS);
+    const firstSlideHTML = await generateSlideHTML(processedContent[0], 0, processedContent.length, includeTTS);
     fs.writeFileSync(path.join(tempDir, 'index.html'), firstSlideHTML);
 
     // Generate SCORM API JavaScript
@@ -485,8 +589,8 @@ function generateSCORMManifest(scormPackage) {
 }
 
 // Helper function to generate slide HTML
-function generateSlideHTML(block, index, totalSlides, includeTTS) {
-  const slideContent = generateSlideContent(block);
+async function generateSlideHTML(block, index, totalSlides, includeTTS) {
+  const slideContent = await generateSlideContent(block);
   const audioElement = includeTTS ? `
     <audio id="slideAudio" preload="auto" style="display: none;">
       <source src="audio_${index + 1}.mp3" type="audio/mpeg">
@@ -695,6 +799,30 @@ function generateSlideHTML(block, index, totalSlides, includeTTS) {
         isCompleted = true;
         `}
         
+        // Simple flashcard functionality - completion card is always visible
+        function flipCard(cardIndex) {
+            const cards = document.querySelectorAll('.flashcard');
+            const card = cards[cardIndex];
+            if (card) {
+                // Toggle flip state - allow unlimited flipping
+                if (card.classList.contains('flipped')) {
+                    // Flip back to front
+                    card.classList.remove('flipped');
+                } else {
+                    // Flip to back
+                    card.classList.add('flipped');
+                }
+            }
+        }
+        
+        function restartFlashcards() {
+            // Reset all cards
+            const cards = document.querySelectorAll('.flashcard');
+            cards.forEach(card => {
+                card.classList.remove('flipped');
+            });
+        }
+        
         function goToNext() {
             console.log('goToNext called, isCompleted:', isCompleted, 'block.type:', '${block.type}');
             
@@ -738,13 +866,80 @@ function generateSlideHTML(block, index, totalSlides, includeTTS) {
         ${(block.type === 'video' || block.type === 'document') ? `
         document.getElementById('nextBtn').disabled = true;
         ` : ''}
+        
+        // Download text file function
+        function downloadTextFile(filename, content) {
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+        
+        // PDF handling functions
+        let pdfLoadTimeout;
+        
+        function handlePDFLoad() {
+            console.log('PDF loaded successfully');
+            clearTimeout(pdfLoadTimeout);
+            const fallback = document.getElementById('pdfFallback');
+            if (fallback) {
+                fallback.style.display = 'none';
+            }
+        }
+        
+        function handlePDFError() {
+            console.log('PDF failed to load, showing fallback');
+            clearTimeout(pdfLoadTimeout);
+            const fallback = document.getElementById('pdfFallback');
+            if (fallback) {
+                fallback.style.display = 'block';
+            }
+        }
+        
+        // Set up PDF loading timeout
+        function setupPDFTimeout() {
+            pdfLoadTimeout = setTimeout(() => {
+                console.log('PDF loading timeout, showing fallback');
+                const fallback = document.getElementById('pdfFallback');
+                if (fallback) {
+                    fallback.style.display = 'block';
+                }
+            }, 10000); // 10 second timeout
+        }
+        
+        // Initialize PDF viewer when page loads
+        window.addEventListener('load', function() {
+            const iframe = document.querySelector('.pdf-iframe');
+            if (iframe) {
+                setupPDFTimeout();
+            }
+        });
+        
+        function toggleFullscreen() {
+            const iframe = document.querySelector('.pdf-iframe');
+            if (iframe) {
+                if (iframe.requestFullscreen) {
+                    iframe.requestFullscreen();
+                } else if (iframe.webkitRequestFullscreen) {
+                    iframe.webkitRequestFullscreen();
+                } else if (iframe.msRequestFullscreen) {
+                    iframe.msRequestFullscreen();
+                }
+            }
+        }
     </script>
 </body>
 </html>`;
 }
 
 // Helper function to generate slide content based on type
-function generateSlideContent(block) {
+async function generateSlideContent(block) {
   switch (block.type) {
     case 'welcome':
       return generateWelcomeContent(block);
@@ -753,7 +948,7 @@ function generateSlideContent(block) {
     case 'video':
       return generateVideoContent(block);
     case 'document':
-      return generateDocumentContent(block);
+      return await generateDocumentContent(block);
     case 'flashcards':
       return generateFlashcardContent(block);
     case 'hotspot':
@@ -882,43 +1077,110 @@ function generateVideoContent(block) {
   return htmlContent;
 }
 
-function generateDocumentContent(block) {
-  return `
+async function generateDocumentContent(block) {
+  console.log(`📄 GENERATING DOCUMENT CONTENT for block ${block.id}`);
+  console.log(`   - Document URL: ${block.data.documentUrl}`);
+  console.log(`   - File type: ${block.data.fileType}`);
+  console.log(`   - File name: ${block.data.fileName}`);
+  console.log(`   - Has DOCX content: ${!!block.data.docxContent}`);
+  
+  // Use the enhanced document service to generate appropriate HTML
+  const documentInfo = {
+    s3Url: block.data.documentUrl,
+    fileType: block.data.fileType,
+    fileName: block.data.fileName,
+    docxContent: block.data.docxContent
+  };
+  
+  const documentHTML = documentService.generateDocumentHTML(block, documentInfo);
+  
+  const htmlContent = `
     <div class="document-slide">
       <h1 class="document-title">${block.data.title || 'Document Content'}</h1>
       ${block.data.description ? `<div class="document-description">${block.data.description}</div>` : ''}
       <div class="document-container">
-        ${block.data.fileType === 'application/pdf' ? 
-          `<iframe src="${block.data.documentUrl}" class="document-iframe"></iframe>` :
-          `<div class="document-preview">
-            <h3>📄 ${block.data.fileName || 'Document'}</h3>
-            <p>Click to download and view the document</p>
-            <a href="${block.data.documentUrl}" download class="download-btn">Download Document</a>
-          </div>`
-        }
+        ${documentHTML}
       </div>
     </div>
   `;
+  
+  console.log(`   - Generated enhanced document HTML`);
+  return htmlContent;
 }
 
 function generateFlashcardContent(block) {
-  const cardsHtml = block.data.cards.map((card, index) => `
-    <div class="flashcard" onclick="flipCard(${index})">
-      <div class="card-front">
-        <h3>${card.frontTitle || 'Question'}</h3>
-        <p>${card.frontDescription || card.front || ''}</p>
+  console.log(`📚 Generating flashcard content for ${block.data.cards.length} cards`);
+  
+  const cardsHtml = block.data.cards.map((card, index) => {
+    console.log(`   - Card ${index + 1}: ${card.frontTitle || 'Untitled'}`);
+    
+    const imageHtml = card.image ? `
+      <div class="card-image-container">
+        <img src="${card.image}" alt="Card image" class="card-image" />
       </div>
-      <div class="card-back">
-        <p>${card.back || 'Answer'}</p>
+    ` : '';
+    
+    return `
+    <div class="flashcard" onclick="flipCard(${index})">
+      <div class="card-content">
+        <div class="card-front">
+          ${imageHtml}
+          <div class="card-text">
+            <h3>${card.frontTitle || 'Card title'}</h3>
+            <p>${card.frontDescription || 'Add a description'}</p>
+          </div>
+        </div>
+        <div class="card-back">
+          <p>${card.back || 'Add answer here'}</p>
+        </div>
+      </div>
+      <div class="card-footer">
+        <button class="flip-btn" onclick="event.stopPropagation(); flipCard(${index})">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+            <path d="M21 3v5h-5"/>
+            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+            <path d="M3 21v-5h5"/>
+          </svg>
+        </button>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
   
   return `
     <div class="flashcard-slide">
-      <h1 class="flashcard-title">${block.data.title || 'Flashcards'}</h1>
-      <div class="flashcards-container">
-        ${cardsHtml}
+      <div class="flashcard-content">
+        <div class="flashcard-title-section">
+          <h1 class="flashcard-title">${block.data.title || 'Untitled'}</h1>
+          <div class="flashcard-description">${block.data.description || 'Add a description'}</div>
+        </div>
+        <div class="flashcards-container horizontal">
+          ${cardsHtml}
+          
+          <div class="completion-card">
+            <div class="completion-content">
+              <h2 class="completion-title">All done!</h2>
+              <p class="completion-text">Continue to the next screen</p>
+              <div class="completion-actions">
+                <button class="completion-btn refresh-btn" onclick="restartFlashcards()">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                    <path d="M21 3v5h-5"/>
+                    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                    <path d="M3 21v-5h5"/>
+                  </svg>
+                </button>
+                <button class="completion-btn continue-btn" onclick="goToNext()">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m6 9 6 6 6-6"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button class="flashcard-next-btn" id="nextCardBtn" onclick="goToNext()">Continue</button>
       </div>
     </div>
   `;

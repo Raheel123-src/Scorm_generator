@@ -823,6 +823,117 @@ async function generateSlideHTML(block, index, totalSlides, includeTTS) {
             });
         }
         
+        // Hotspot functionality
+        function showHotspotInfo(hotspotIndex) {
+            const hotspots = ${JSON.stringify(block.data.hotspots)};
+            const hotspot = hotspots[hotspotIndex];
+            
+            if (hotspot) {
+                // Create hotspot info overlay
+                const overlay = document.createElement('div');
+                overlay.className = 'hotspot-info-overlay';
+                overlay.innerHTML = \`
+                    <div class="hotspot-info-card">
+                        <div class="hotspot-info-header">
+                            <h3 class="hotspot-info-title">\${hotspot.title || 'Hotspot'}</h3>
+                            <button class="hotspot-info-close" onclick="closeHotspotInfo()">×</button>
+                        </div>
+                        <div class="hotspot-info-content">
+                            <p class="hotspot-info-description">\${hotspot.description || 'No description available'}</p>
+                        </div>
+                    </div>
+                \`;
+                
+                // Append to image wrapper instead of body
+                const imageWrapper = document.querySelector('.image-wrapper');
+                if (imageWrapper) {
+                    imageWrapper.appendChild(overlay);
+                    
+                    // Position the card relative to the hotspot within the image
+                    const hotspotElement = document.querySelector(\`[onclick="showHotspotInfo(\${hotspotIndex})"]\`);
+                    if (hotspotElement) {
+                        const wrapperRect = imageWrapper.getBoundingClientRect();
+                        const hotspotRect = hotspotElement.getBoundingClientRect();
+                        
+                        // Calculate position relative to the image wrapper
+                        const relativeX = hotspotRect.left - wrapperRect.left;
+                        const relativeY = hotspotRect.top - wrapperRect.top;
+                        
+                        const card = overlay.querySelector('.hotspot-info-card');
+                        card.style.position = 'absolute';
+                        card.style.left = relativeX + 'px';
+                        card.style.top = (relativeY - 120) + 'px';
+                        
+                        // Ensure card stays within image bounds
+                        const cardRect = card.getBoundingClientRect();
+                        const wrapperWidth = wrapperRect.width;
+                        const wrapperHeight = wrapperRect.height;
+                        
+                        if (relativeX + cardRect.width > wrapperWidth) {
+                            card.style.left = (wrapperWidth - cardRect.width - 10) + 'px';
+                        }
+                        if (relativeY - 120 < 0) {
+                            card.style.top = (relativeY + 40) + 'px';
+                        }
+                    }
+                }
+            }
+        }
+        
+        function closeHotspotInfo() {
+            const overlay = document.querySelector('.hotspot-info-overlay');
+            if (overlay) {
+                overlay.remove();
+            }
+        }
+        
+        // Close hotspot info when clicking outside
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('.hotspot-info-card') && !event.target.closest('.hotspot')) {
+                closeHotspotInfo();
+            }
+        });
+        
+        // Ensure hotspots are positioned relative to the image, not the container
+        function adjustHotspotPositions() {
+            const imageWrapper = document.querySelector('.image-wrapper');
+            const image = document.querySelector('.hotspot-image');
+            const hotspots = document.querySelectorAll('.hotspot');
+            
+            if (imageWrapper && image && hotspots.length > 0) {
+                // Get the actual image dimensions within the wrapper
+                const imageRect = image.getBoundingClientRect();
+                const wrapperRect = imageWrapper.getBoundingClientRect();
+                
+                // Calculate the scale factor if the image is scaled
+                const scaleX = imageRect.width / image.naturalWidth;
+                const scaleY = imageRect.height / image.naturalHeight;
+                
+                hotspots.forEach((hotspot, index) => {
+                    // Get the original percentage position from the hotspot data
+                    const hotspots = ${JSON.stringify(block.data.hotspots)};
+                    const hotspotData = hotspots[index];
+                    
+                    if (hotspotData) {
+                        // Calculate position relative to the actual image
+                        const x = (hotspotData.x / 100) * imageRect.width;
+                        const y = (hotspotData.y / 100) * imageRect.height;
+                        
+                        // Position relative to the image within the wrapper
+                        const relativeX = x + (imageRect.left - wrapperRect.left);
+                        const relativeY = y + (imageRect.top - wrapperRect.top);
+                        
+                        hotspot.style.left = relativeX + 'px';
+                        hotspot.style.top = relativeY + 'px';
+                    }
+                });
+            }
+        }
+        
+        // Adjust positions when the page loads and when the window resizes
+        window.addEventListener('load', adjustHotspotPositions);
+        window.addEventListener('resize', adjustHotspotPositions);
+        
         function goToNext() {
             console.log('goToNext called, isCompleted:', isCompleted, 'block.type:', '${block.type}');
             
@@ -1187,18 +1298,37 @@ function generateFlashcardContent(block) {
 }
 
 function generateHotspotContent(block) {
-  const hotspotsHtml = block.data.hotspots.map((hotspot, index) => `
+  console.log(`🎯 Generating hotspot content for ${block.data.hotspots.length} hotspots`);
+  
+  const hotspotsHtml = block.data.hotspots.map((hotspot, index) => {
+    console.log(`   - Hotspot ${index + 1}: ${hotspot.title || 'Untitled'} at (${hotspot.x}%, ${hotspot.y}%)`);
+    console.log(`   - Generated HTML for hotspot ${index + 1}: left: ${hotspot.x}%, top: ${hotspot.y}%`);
+    
+    return `
     <div class="hotspot" style="left: ${hotspot.x}%; top: ${hotspot.y}%;" onclick="showHotspotInfo(${index})">
-      <div class="hotspot-marker"></div>
+      <div class="hotspot-marker" style="background-color: ${hotspot.color || '#3b82f6'};">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 5v14"/>
+          <path d="M5 12h14"/>
+        </svg>
+      </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
   
   return `
     <div class="hotspot-slide">
-      <h1 class="hotspot-title">${block.data.title || 'Interactive Image'}</h1>
-      <div class="hotspot-container">
-        <img src="${block.data.imageUrl}" alt="${block.data.altText || ''}" class="hotspot-image">
-        ${hotspotsHtml}
+      <div class="hotspot-content">
+        <div class="hotspot-title-section">
+          <h1 class="hotspot-title">${block.data.title || 'Interactive Image'}</h1>
+          <div class="hotspot-description">${block.data.description || 'Add a description'}</div>
+        </div>
+        <div class="hotspot-container">
+          <div class="image-wrapper">
+            <img src="${block.data.imageUrl}" alt="${block.data.altText || ''}" class="hotspot-image">
+            ${hotspotsHtml}
+          </div>
+        </div>
       </div>
     </div>
   `;

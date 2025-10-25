@@ -108,7 +108,7 @@
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   position: relative;
   margin-bottom: 12px;
   min-height: 48px;
@@ -125,12 +125,70 @@
   padding: 12px 16px;
 }
 
+.checklist-item.dragging {
+  opacity: 0.5;
+  transform: rotate(2deg);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.checklist-item.drag-over {
+  border-top: 3px solid #3b82f6;
+  border-radius: 0;
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.checklist-item.drag-over::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #3b82f6;
+  border-radius: 1px;
+}
+
+/* Sublist Styling */
+.sublist-container {
+  margin-left: 24px;
+  border-left: 2px solid #e5e7eb;
+  padding-left: 16px;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.sublist-item {
+  margin-left: 0;
+  margin-bottom: 8px;
+  position: relative;
+}
+
+.sublist-item::before {
+  content: '';
+  position: absolute;
+  left: -18px;
+  top: 50%;
+  width: 12px;
+  height: 2px;
+  background: #e5e7eb;
+  transform: translateY(-50%);
+}
+
+.sublist-item .checklist-checkbox {
+  width: 24px;
+  height: 24px;
+  margin-right: 14px;
+}
+
+.sublist-item .checklist-item-text {
+  font-size: 16px;
+  color: #6b7280;
+}
+
 .checklist-checkbox {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #3b82f6;
-  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -141,9 +199,35 @@
   flex-shrink: 0;
 }
 
-.checklist-checkbox:hover {
+.checklist-checkbox.checked {
+  background: #3b82f6;
+  color: white;
+}
+
+.checklist-checkbox.checked:hover {
   background: #2563eb;
   transform: scale(1.05);
+}
+
+.checklist-checkbox.unchecked {
+  background: transparent;
+  border: 2px dashed #d1d5db;
+}
+
+.checklist-checkbox.unchecked::before {
+  content: '✓';
+  color: #d1d5db;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.checklist-checkbox.unchecked:hover {
+  border-color: #9ca3af;
+  transform: scale(1.05);
+}
+
+.checklist-checkbox.unchecked:hover::before {
+  color: #9ca3af;
 }
 
 .checklist-item-content {
@@ -188,8 +272,8 @@
 }
 
 .checklist-drag-handle {
-  width: 20px;
-  height: 20px;
+  width: 28px;
+  height: 28px;
   border: none;
   background: transparent;
   color: #9ca3af;
@@ -197,7 +281,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: 6px;
   transition: all 0.2s;
 }
 
@@ -206,9 +290,13 @@
   color: #6b7280;
 }
 
+.checklist-drag-handle:active {
+  cursor: grabbing;
+}
+
 .checklist-item-menu {
-  width: 20px;
-  height: 20px;
+  width: 28px;
+  height: 28px;
   border: none;
   background: transparent;
   color: #9ca3af;
@@ -216,7 +304,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: 6px;
   transition: all 0.2s;
 }
 

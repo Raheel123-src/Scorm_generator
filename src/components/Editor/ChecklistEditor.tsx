@@ -28,7 +28,7 @@ interface ChecklistEditorProps {
 export default function ChecklistEditor({ data, onChange }: ChecklistEditorProps) {
   const [formData, setFormData] = useState<ChecklistData>({
     title: data.title || 'Untitled',
-    items: data.items || []
+    items: (data.items || []).map(item => ({ ...item, checked: true }))
   })
   
   const [selectedItem, setSelectedItem] = useState<string | null>(null)
@@ -39,6 +39,8 @@ export default function ChecklistEditor({ data, onChange }: ChecklistEditorProps
     title: true,
     description: true
   })
+  const [draggedItem, setDraggedItem] = useState<string | null>(null)
+  const [dragOverItem, setDragOverItem] = useState<string | null>(null)
 
   const visibilityRef = useRef<HTMLDivElement>(null)
   const colorPickerRef = useRef<HTMLDivElement>(null)
@@ -73,31 +75,95 @@ export default function ChecklistEditor({ data, onChange }: ChecklistEditorProps
     const newItem = {
       id: `item-${Date.now()}`,
       text: 'Untitled',
-      checked: false
+      checked: true
     }
     const updatedData = { ...formData, items: [...formData.items, newItem] }
     setFormData(updatedData)
     onChange(updatedData)
   }
 
+  const updateItemInNestedStructure = (items: any[], id: string, field: 'text' | 'checked', value: string | boolean): any[] => {
+    return items.map(item => {
+      if (item.id === id) {
+        return { ...item, [field]: value }
+      }
+      if (item.children) {
+        return {
+          ...item,
+          children: updateItemInNestedStructure(item.children, id, field, value)
+        }
+      }
+      return item
+    })
+  }
+
   const handleUpdateItem = (id: string, field: 'text' | 'checked', value: string | boolean) => {
     const updatedData = {
       ...formData,
-      items: formData.items.map(item =>
-        item.id === id ? { ...item, [field]: value } : item
-      )
+      items: updateItemInNestedStructure(formData.items, id, field, value)
     }
     setFormData(updatedData)
     onChange(updatedData)
   }
 
+  const deleteItemFromNestedStructure = (items: any[], id: string): any[] => {
+    return items.filter(item => {
+      if (item.id === id) {
+        return false
+      }
+      if (item.children) {
+        return {
+          ...item,
+          children: deleteItemFromNestedStructure(item.children, id)
+        }
+      }
+      return true
+    }).map(item => {
+      if (item.children) {
+        return {
+          ...item,
+          children: deleteItemFromNestedStructure(item.children, id)
+        }
+      }
+      return item
+    })
+  }
+
   const handleDeleteItem = (id: string) => {
     const updatedData = {
       ...formData,
-      items: formData.items.filter(item => item.id !== id)
+      items: deleteItemFromNestedStructure(formData.items, id)
     }
     setFormData(updatedData)
     onChange(updatedData)
+    setShowItemMenu(null)
+  }
+
+  const handleCreateSublist = (id: string) => {
+    const parentItem = formData.items.find(item => item.id === id)
+    if (parentItem) {
+      const newSublistItem = {
+        id: `sublist-${Date.now()}`,
+        text: 'New sublist item',
+        checked: true,
+        parentId: id
+      }
+      
+      // Find the parent item and add the sublist item to its children
+      const updatedItems = formData.items.map(item => {
+        if (item.id === id) {
+          return {
+            ...item,
+            children: [...(item.children || []), newSublistItem]
+          }
+        }
+        return item
+      })
+      
+      const updatedData = { ...formData, items: updatedItems }
+      setFormData(updatedData)
+      onChange(updatedData)
+    }
     setShowItemMenu(null)
   }
 
@@ -128,6 +194,143 @@ export default function ChecklistEditor({ data, onChange }: ChecklistEditorProps
     if (item) {
       handleUpdateItem(itemId, 'checked', !item.checked)
     }
+  }
+
+  const handleDragStart = (e: React.DragEvent, itemId: string) => {
+    setDraggedItem(itemId)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/html', e.currentTarget.outerHTML)
+    const target = e.currentTarget as HTMLElement
+    target.style.opacity = '0.5'
+  }
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    const target = e.currentTarget as HTMLElement
+    target.style.opacity = '1'
+    setDraggedItem(null)
+    setDragOverItem(null)
+  }
+
+  const handleDragOver = (e: React.DragEvent, itemId: string) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverItem(itemId)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setDragOverItem(null)
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent, targetItemId: string) => {
+    e.preventDefault()
+    
+    if (!draggedItem || draggedItem === targetItemId) {
+      setDraggedItem(null)
+      setDragOverItem(null)
+      return
+    }
+
+    const draggedIndex = formData.items.findIndex(item => item.id === draggedItem)
+    const targetIndex = formData.items.findIndex(item => item.id === targetItemId)
+    
+    if (draggedIndex === -1 || targetIndex === -1) return
+
+    const newItems = [...formData.items]
+    const [draggedItemData] = newItems.splice(draggedIndex, 1)
+    newItems.splice(targetIndex, 0, draggedItemData)
+
+    const updatedData = { ...formData, items: newItems }
+    setFormData(updatedData)
+    onChange(updatedData)
+    
+    setDraggedItem(null)
+    setDragOverItem(null)
+  }
+
+  const renderChecklistItem = (item: any, isChild: boolean = false) => {
+    return (
+      <div key={item.id}>
+        <div 
+          className={`checklist-item ${isChild ? 'sublist-item' : ''} ${selectedItem === item.id ? 'selected' : ''} ${draggedItem === item.id ? 'dragging' : ''} ${dragOverItem === item.id ? 'drag-over' : ''}`}
+          onClick={() => setSelectedItem(item.id)}
+          draggable
+          onDragStart={(e) => handleDragStart(e, item.id)}
+          onDragEnd={handleDragEnd}
+          onDragOver={(e) => handleDragOver(e, item.id)}
+          onDragLeave={handleDragLeave}
+          onDrop={(e) => handleDrop(e, item.id)}
+        >
+          <button 
+            className={`checklist-checkbox ${item.checked ? 'checked' : 'unchecked'}`}
+            onClick={(e) => handleCheckboxClick(item.id, e)}
+          >
+            {item.checked ? (
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M2 6L4.5 8.5L10 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            ) : null}
+          </button>
+          
+          <div className="checklist-item-content">
+            <div 
+              className="checklist-item-text"
+              contentEditable
+              suppressContentEditableWarning
+              onBlur={(e) => handleUpdateItem(item.id, 'text', e.currentTarget.textContent || '')}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {item.text}
+            </div>
+          </div>
+          
+          <div className="checklist-item-actions">
+            <button 
+              className="checklist-drag-handle"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <GripVertical size={18} />
+            </button>
+            <button 
+              className="checklist-item-menu"
+              onClick={(e) => handleItemMenuClick(item.id, e)}
+            >
+              <MoreVertical size={18} />
+            </button>
+          </div>
+
+          {/* Item Menu Dropdown */}
+          {showItemMenu === item.id && (
+            <div className="checklist-item-menu-dropdown">
+              <div className="menu-option" onClick={() => handleCreateSublist(item.id)}>
+                <CheckCheck size={16} />
+                <span>Sublist</span>
+              </div>
+              <div className="menu-option">
+                <Droplets size={16} />
+                <span>Override color</span>
+              </div>
+              <div className="menu-option" onClick={() => handleDuplicateItem(item.id)}>
+                <Plus size={16} />
+                <span>Duplicate</span>
+              </div>
+              <div className="menu-option delete-option" onClick={() => handleDeleteItem(item.id)}>
+                <Trash2 size={16} />
+                <span>Delete</span>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {/* Render children if they exist */}
+        {item.children && item.children.length > 0 && (
+          <div className="sublist-container">
+            {item.children.map((child: any) => renderChecklistItem(child, true))}
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (
@@ -180,70 +383,7 @@ export default function ChecklistEditor({ data, onChange }: ChecklistEditorProps
 
           {/* Checklist Items */}
           <div className="checklist-items">
-            {formData.items.map((item, index) => (
-              <div 
-                key={item.id} 
-                className={`checklist-item ${selectedItem === item.id ? 'selected' : ''}`}
-                onClick={() => setSelectedItem(item.id)}
-              >
-                <button 
-                  className="checklist-checkbox"
-                  onClick={(e) => handleCheckboxClick(item.id, e)}
-                >
-                  {item.checked ? (
-                    <CheckSquare size={18} />
-                  ) : (
-                    <Square size={18} />
-                  )}
-                </button>
-                
-                <div className="checklist-item-content">
-                  <div 
-                    className="checklist-item-text"
-                    contentEditable
-                    suppressContentEditableWarning
-                    onBlur={(e) => handleUpdateItem(item.id, 'text', e.currentTarget.textContent || '')}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {item.text}
-                  </div>
-                </div>
-                
-                <div className="checklist-item-actions">
-                  <button className="checklist-drag-handle">
-                    <GripVertical size={14} />
-                  </button>
-                  <button 
-                    className="checklist-item-menu"
-                    onClick={(e) => handleItemMenuClick(item.id, e)}
-                  >
-                    <MoreVertical size={14} />
-                  </button>
-                </div>
-
-                {/* Item Menu Dropdown */}
-                {showItemMenu === item.id && (
-                  <div className="checklist-item-menu-dropdown">
-                    <div className="menu-option">
-                      <CheckCheck size={16} />
-                      <span>Sublist</span>
-                    </div>
-                    <div className="menu-option">
-                      <Droplets size={16} />
-                      <span>Override color</span>
-                    </div>
-                    <div className="menu-option" onClick={() => handleDuplicateItem(item.id)}>
-                      <Plus size={16} />
-                      <span>Duplicate</span>
-                    </div>
-                    <div className="menu-option delete-option" onClick={() => handleDeleteItem(item.id)}>
-                      <Trash2 size={16} />
-                      <span>Delete</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+            {formData.items.map((item, index) => renderChecklistItem(item))}
             
             <button className="add-item-btn" onClick={handleAddItem}>
               <Plus size={16} />

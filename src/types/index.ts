@@ -59,6 +59,12 @@ export interface ChecklistData {
     id: string;
     text: string;
     checked: boolean;
+    parentId?: string;
+    children?: {
+      id: string;
+      text: string;
+      checked: boolean;
+    }[];
   }[];
 }
 

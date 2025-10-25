@@ -603,6 +603,7 @@ async function generateSlideHTML(block, index, totalSlides, includeTTS) {
     </div>
   ` : '';
 
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -648,6 +649,11 @@ async function generateSlideHTML(block, index, totalSlides, includeTTS) {
         .nav-btn:disabled {
             background: #6b7280;
             cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .nav-btn:disabled:hover {
+            background: #6b7280;
+            transform: none;
         }
         .completion-overlay {
             position: fixed;
@@ -866,17 +872,7 @@ async function generateSlideHTML(block, index, totalSlides, includeTTS) {
                 // Create hotspot info overlay
                 const overlay = document.createElement('div');
                 overlay.className = 'hotspot-info-overlay';
-                overlay.innerHTML = \`
-                    <div class="hotspot-info-card">
-                        <div class="hotspot-info-header">
-                            <h3 class="hotspot-info-title">\${hotspot.title || 'Hotspot'}</h3>
-                            <button class="hotspot-info-close" onclick="closeHotspotInfo()">×</button>
-                        </div>
-                        <div class="hotspot-info-content">
-                            <p class="hotspot-info-description">\${hotspot.description || 'No description available'}</p>
-                        </div>
-                    </div>
-                \`;
+                overlay.innerHTML = '<div class="hotspot-info-card"><div class="hotspot-info-header"><h3 class="hotspot-info-title">' + (hotspot.title || 'Hotspot') + '</h3><button class="hotspot-info-close" onclick="closeHotspotInfo()">×</button></div><div class="hotspot-info-content"><p class="hotspot-info-description">' + (hotspot.description || 'No description available') + '</p></div></div>';
                 
                 // Append to image wrapper instead of body
                 const imageWrapper = document.querySelector('.image-wrapper');
@@ -884,7 +880,7 @@ async function generateSlideHTML(block, index, totalSlides, includeTTS) {
                     imageWrapper.appendChild(overlay);
                     
                     // Position the card relative to the hotspot within the image
-                    const hotspotElement = document.querySelector(\`[onclick="showHotspotInfo(\${hotspotIndex})"]\`);
+                    const hotspotElement = document.querySelector('[onclick="showHotspotInfo(' + hotspotIndex + ')"]');
                     if (hotspotElement) {
                         const wrapperRect = imageWrapper.getBoundingClientRect();
                         const hotspotRect = hotspotElement.getBoundingClientRect();
@@ -975,6 +971,26 @@ async function generateSlideHTML(block, index, totalSlides, includeTTS) {
                 console.log('Showing completion overlay');
                 document.getElementById('completionOverlay').style.display = 'flex';
                 return;
+            }
+            
+            // Special handling for checklist slides
+            if ('${block.type}' === 'checklist') {
+                const checkedItems = document.querySelectorAll('.checklist-checkbox.checked').length;
+                const totalItems = document.querySelectorAll('.checklist-checkbox').length;
+                
+                if (checkedItems < totalItems) {
+                    // Check the next unchecked item
+                    const uncheckedItems = document.querySelectorAll('.checklist-checkbox.unchecked');
+                    if (uncheckedItems.length > 0) {
+                        const nextItem = uncheckedItems[0];
+                        const itemId = nextItem.getAttribute('onclick').match(/toggleCheckbox\\('([^']+)'\\)/)[1];
+                        toggleCheckbox(itemId);
+                        return;
+                    }
+                } else {
+                    // All items are checked, proceed to next slide
+                    console.log('All checklist items completed, proceeding to next slide');
+                }
             }
             
             if (currentSlide < totalSlides - 1) {
@@ -1078,6 +1094,101 @@ async function generateSlideHTML(block, index, totalSlides, includeTTS) {
                 }
             }
         }
+        
+        // Checklist functionality
+        function toggleCheckbox(itemId) {
+            const checkbox = document.querySelector('[onclick="toggleCheckbox(\\'' + itemId + '\\')"]');
+            const itemContainer = checkbox.closest('.checklist-item');
+            
+            if (checkbox) {
+                // Add animation class for smooth transition
+                checkbox.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+                
+                // Toggle classes with a slight delay for better visual feedback
+                setTimeout(() => {
+                    checkbox.classList.toggle('checked');
+                    checkbox.classList.toggle('unchecked');
+                    
+                    // Update the checkmark SVG with animation
+                    if (checkbox.classList.contains('checked')) {
+                        checkbox.innerHTML = '<svg width="28" height="28" viewBox="0 0 28 28" fill="none" style="animation: checkmarkAppear 0.4s ease-out;"><path d="M7 14L12.5 19.5L21 7" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/></svg>';
+                        itemContainer.classList.add('checked');
+                    } else {
+                        checkbox.innerHTML = '';
+                        itemContainer.classList.remove('checked');
+                    }
+                    
+                    updateProgress();
+                }, 100);
+            }
+        }
+        
+        function updateProgress() {
+            // Update SCORM progress if API is available
+            if (API) {
+                try {
+                    const checkedItems = document.querySelectorAll('.checklist-checkbox.checked').length;
+                    const totalItems = document.querySelectorAll('.checklist-checkbox').length;
+                    const progress = totalItems > 0 ? (checkedItems / totalItems) * 100 : 0;
+                    
+                    API.SetValue("cmi.progress_measure", (progress / 100).toString());
+                    
+                    if (progress === 100) {
+                        API.SetValue("cmi.completion_status", "completed");
+                        API.SetValue("cmi.success_status", "passed");
+                    }
+                } catch (e) {
+                    console.log("Error updating SCORM progress:", e);
+                }
+            }
+            
+            // Update Next button state
+            updateNextButtonState();
+        }
+        
+        function updateNextButtonState() {
+            const checkedItems = document.querySelectorAll('.checklist-checkbox.checked').length;
+            const totalItems = document.querySelectorAll('.checklist-checkbox').length;
+            const nextBtn = document.getElementById('nextBtn');
+            
+            if (nextBtn) {
+                // For checklist slides, enable button if there are items to check or if all are checked
+                if ('${block.type}' === 'checklist') {
+                    if (totalItems > 0) {
+                        nextBtn.disabled = false;
+                        nextBtn.style.background = '#3b82f6';
+                        nextBtn.style.cursor = 'pointer';
+                        
+                        // Update button text based on state
+                        if (checkedItems === totalItems) {
+                            nextBtn.textContent = 'Next';
+                        } else {
+                            nextBtn.textContent = 'Check Next Item';
+                        }
+                    } else {
+                        nextBtn.disabled = true;
+                        nextBtn.style.background = '#6b7280';
+                        nextBtn.style.cursor = 'not-allowed';
+                    }
+                } else {
+                    // For other slide types, use original logic
+                    if (checkedItems === totalItems && totalItems > 0) {
+                        nextBtn.disabled = false;
+                        nextBtn.style.background = '#3b82f6';
+                        nextBtn.style.cursor = 'pointer';
+                    } else {
+                        nextBtn.disabled = true;
+                        nextBtn.style.background = '#6b7280';
+                        nextBtn.style.cursor = 'not-allowed';
+                    }
+                }
+            }
+        }
+        
+        // Initialize Next button state on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateNextButtonState();
+        });
     </script>
 </body>
 </html>`;
@@ -1414,21 +1525,39 @@ function generateAccordionContent(block) {
 }
 
 function generateChecklistContent(block) {
-  const itemsHtml = block.data.items.map((item, index) => `
-    <div class="checklist-item">
-      <input type="checkbox" id="item_${index}" onchange="updateProgress()">
-      <label for="item_${index}">${item.text}</label>
-    </div>
-  `).join('');
+  const renderChecklistItem = (item, index, isChild = false) => {
+    const itemId = `item_${index}`;
+    const itemClass = isChild ? 'checklist-item sublist-item' : 'checklist-item';
+    
+    let childrenHtml = '';
+    if (item.children && item.children.length > 0) {
+      childrenHtml = '<div class="sublist-container">' +
+        item.children.map((child, childIndex) => 
+          renderChecklistItem(child, index + '_' + childIndex, true)
+        ).join('') +
+        '</div>';
+    }
+    
+    return '<div class="' + itemClass + '">' +
+      '<div class="checklist-item-content">' +
+        '<div class="checklist-checkbox unchecked" onclick="toggleCheckbox(\'' + itemId + '\')">' +
+        '</div>' +
+        '<label class="checklist-item-text" onclick="toggleCheckbox(\'' + itemId + '\')">' + item.text + '</label>' +
+      '</div>' +
+      childrenHtml +
+      '</div>';
+  };
+
+  const itemsHtml = block.data.items.map((item, index) => 
+    renderChecklistItem(item, index)
+  ).join('');
   
-  return `
-    <div class="checklist-slide">
-      <h1 class="checklist-title">${block.data.title || 'Checklist'}</h1>
-      <div class="checklist-container">
-        ${itemsHtml}
-      </div>
-    </div>
-  `;
+  return '<div class="checklist-slide">' +
+    '<h1 class="checklist-title">' + (block.data.title || 'Checklist') + '</h1>' +
+    '<div class="checklist-container">' +
+    itemsHtml +
+    '</div>' +
+    '</div>';
 }
 
 function generateEmbedContent(block) {
@@ -1466,6 +1595,43 @@ function getSlideSpecificStyles(type) {
     .welcome-duration { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 2rem; color: #cbd5e1; }
     .welcome-description { font-size: 1.2rem; margin-bottom: 2rem; }
     .welcome-start-btn { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 1rem 2rem; border-radius: 2rem; border: none; font-size: 1.125rem; font-weight: 600; cursor: pointer; }
+    
+    /* Checklist Styles */
+    .checklist-slide { max-width: 1200px; margin: 0 auto; padding: 4rem; background: white; border-radius: 20px; box-shadow: 0 12px 35px rgba(0, 0, 0, 0.15); min-height: 85vh; display: flex; flex-direction: column; justify-content: center; }
+    .checklist-title { font-size: 4.5rem; font-weight: 700; color: #1f2937; margin: 0 0 4rem 0; text-align: center; }
+    .checklist-container { display: flex; flex-direction: column; gap: 0; width: 100%; }
+    .checklist-item { display: flex; flex-direction: column; padding: 30px 0; background: transparent; border: none; cursor: pointer; transition: all 0.2s ease; position: relative; margin-bottom: 25px; min-height: 100px; width: 100%; }
+    .checklist-item-content { display: flex; align-items: flex-start; width: 100%; }
+    .checklist-checkbox { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; margin-right: 30px; transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink: 0; transform: scale(1); }
+    .checklist-checkbox:hover { transform: scale(1.1); transition: transform 0.3s ease; }
+    .checklist-checkbox.checked { background: #3b82f6; color: white; transform: scale(1.05); box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); }
+    .checklist-checkbox.unchecked { background: transparent; border: 4px dashed #d1d5db; transform: scale(1); }
+    .checklist-checkbox.unchecked::before { content: '✓'; color: #d1d5db; font-size: 28px; font-weight: bold; transition: all 0.4s ease; }
+    .checklist-checkbox.unchecked:hover { border-color: #9ca3af; transform: scale(1.05); }
+    .checklist-checkbox.unchecked:hover::before { color: #9ca3af; transform: scale(1.1); }
+    .checklist-item-text { font-size: 32px; color: #374151; cursor: pointer; font-weight: 500; line-height: 1.6; transition: all 0.4s ease; }
+    .checklist-item:hover .checklist-item-text { color: #1f2937; transform: translateX(5px); }
+    .checklist-item.checked .checklist-item-text { color: #6b7280; text-decoration: line-through; opacity: 0.8; }
+    
+    /* Animation keyframes */
+    @keyframes checkmarkAppear {
+        0% { transform: scale(0) rotate(-45deg); opacity: 0; }
+        50% { transform: scale(1.2) rotate(0deg); opacity: 0.8; }
+        100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    }
+    
+    @keyframes checkboxPulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+        100% { transform: scale(1.05); }
+    }
+    
+    /* Sublist Styles */
+    .sublist-container { border-left: 3px solid #e5e7eb; padding-left: 15px; margin-top: 15px; margin-bottom: 15px; }
+    .sublist-item { margin-left: 0; margin-bottom: 15px; position: relative; display: flex; align-items: flex-start; width: 100%; }
+    .sublist-item::before { content: ''; position: absolute; left: -15px; top: 50%; width: 10px; height: 3px; background: #e5e7eb; transform: translateY(-50%); }
+    .sublist-item .checklist-checkbox { width: 45px; height: 45px; margin-right: 25px; }
+    .sublist-item .checklist-item-text { font-size: 28px; color: #6b7280; }
   `;
   
   return baseStyles;

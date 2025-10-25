@@ -1587,12 +1587,9 @@ body {
 }
 
 .checklist-container {
-  max-width: 600px;
-  margin: 0 auto;
-  background: white;
+  max-width: 500px;
   border-radius: 12px;
   padding: 2rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .checklist-item {
@@ -1616,7 +1613,6 @@ body {
 .checklist-item label {
   flex: 1;
   cursor: pointer;
-  font-size: 1.125rem;
   color: #1f2937;
 }
 

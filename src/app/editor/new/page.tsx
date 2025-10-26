@@ -32,6 +32,7 @@ import {
 import HotspotImageEditor from '@/components/Editor/HotspotImageEditor'
 import AccordionEditor from '@/components/Editor/AccordionEditor'
 import ChecklistEditor from '@/components/Editor/ChecklistEditor'
+import QuizEditor from '@/components/Editor/QuizEditor'
 import EmbedEditor from '@/components/Editor/EmbedEditor'
 import CourseCompletedEditor from '@/components/Editor/CourseCompletedEditor'
   import './editor.css'
@@ -39,6 +40,7 @@ import CourseCompletedEditor from '@/components/Editor/CourseCompletedEditor'
   import './hotspot-image-editor.css'
   import './accordion-editor.css'
   import './checklist-editor.css'
+  import './quiz-editor.css'
   import './embed-editor.css'
 
 interface ContentBlock {
@@ -1020,6 +1022,13 @@ export default function EditorPage() {
           return (
             <ChecklistEditor
               data={block.data || { title: 'Untitled', items: [] }}
+              onChange={(data) => updateBlockData(block.id, data)}
+            />
+          )
+        case 'quiz':
+          return (
+            <QuizEditor
+              data={block.data || { questions: [] }}
               onChange={(data) => updateBlockData(block.id, data)}
             />
           )

@@ -120,6 +120,10 @@ export interface HotspotImageData {
 }
 
 export interface QuizData {
+  startTitle?: string;
+  startContent?: string;
+  finishTitle?: string;
+  finishMessage?: string;
   questions: {
     id: string;
     type: 'mcq' | 'multiple' | 'true-false' | 'fill-blank' | 'match' | 'short-answer' | 'sequence';

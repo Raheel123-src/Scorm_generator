@@ -1,283 +1,388 @@
-'use client'
-
-import { useState } from 'react'
-import { Plus, Trash2, HelpCircle, CheckCircle, XCircle } from 'lucide-react'
-import { QuizData } from '@/types'
+import React, { useState, useEffect, useRef } from 'react';
+import { QuizData } from '../../types';
+import { Plus, Eye, CheckSquare, List, MoreVertical, Image as ImageIcon, Flag, MapPin } from 'lucide-react';
 
 interface QuizEditorProps {
-  data: QuizData
-  onChange: (data: QuizData) => void
+  data: QuizData;
+  onChange: (data: QuizData) => void;
 }
 
-const questionTypes = [
-  { value: 'mcq', label: 'Multiple Choice (Single)' },
-  { value: 'multiple', label: 'Multiple Choice (Multiple)' },
-  { value: 'true-false', label: 'True/False' },
-  { value: 'fill-blank', label: 'Fill in the Blank' },
-  { value: 'short-answer', label: 'Short Answer' },
-  { value: 'sequence', label: 'Sequence Order' }
-]
+const QuizEditor: React.FC<QuizEditorProps> = ({ data, onChange }) => {
+  const [formData, setFormData] = useState<QuizData>({
+    startTitle: 'Test your knowledge',
+    startContent: 'Add your content here...',
+    finishTitle: 'Congratulations! 😊',
+    finishMessage: 'You have completed the quiz',
+    questions: [],
+    ...data
+  });
+  const [selectedLayout, setSelectedLayout] = useState('default');
+  const [displayOptions, setDisplayOptions] = useState('standard');
+  const [alignment, setAlignment] = useState('left');
+  const [showQuestionTypeDropdown, setShowQuestionTypeDropdown] = useState(false);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-export default function QuizEditor({ data, onChange }: QuizEditorProps) {
-  const [quizData, setQuizData] = useState<QuizData>({
-    questions: data.questions || []
-  })
+  useEffect(() => {
+    setFormData(data);
+  }, [data]);
+
+  // Handle clicks outside dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowQuestionTypeDropdown(false);
+      }
+    };
+
+    if (showQuestionTypeDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showQuestionTypeDropdown]);
+
+const questionTypes = [
+    { id: 'mcq', label: 'Multiple choice', icon: '☑️' },
+    { id: 'multiple', label: 'Multiple response', icon: '☑️' },
+    { id: 'true-false', label: 'True / False', icon: '✓✗' },
+    { id: 'short-answer', label: 'Short answer', icon: 'T' },
+    { id: 'fill-blank', label: 'Fill in the blank', icon: '⌄' },
+    { id: 'match', label: 'Match the corresponding', icon: '≡' },
+    { id: 'sequence', label: 'Match sequence', icon: '≡' }
+  ];
 
   const handleAddQuestion = () => {
+    setShowQuestionTypeDropdown(true);
+  };
+
+  const handleQuestionTypeSelect = (type: string) => {
     const newQuestion = {
-      id: Date.now().toString(),
-      type: 'mcq' as const,
-      question: '',
-      options: ['', '', '', ''],
-      correctAnswer: 0,
+      id: `question-${Date.now()}`,
+      type: type as any,
+      question: 'New question',
+      options: type === 'mcq' || type === 'multiple' ? ['Option 1', 'Option 2', 'Option 3', 'Option 4'] : undefined,
+      correctAnswer: type === 'mcq' ? 0 : type === 'true-false' ? true : '',
       explanation: ''
-    }
-    const newData = {
-      questions: [...quizData.questions, newQuestion]
-    }
-    setQuizData(newData)
-    onChange(newData)
-  }
+    };
 
-  const handleUpdateQuestion = (id: string, field: string, value: any) => {
-    const newData = {
-      questions: quizData.questions.map(q =>
-        q.id === id ? { ...q, [field]: value } : q
-      )
-    }
-    setQuizData(newData)
-    onChange(newData)
-  }
+    const updatedData = {
+      ...formData,
+      questions: [...formData.questions, newQuestion]
+    };
+    setFormData(updatedData);
+    onChange(updatedData);
+    setShowQuestionTypeDropdown(false);
+  };
 
-  const handleDeleteQuestion = (id: string) => {
-    const newData = {
-      questions: quizData.questions.filter(q => q.id !== id)
-    }
-    setQuizData(newData)
-    onChange(newData)
-  }
+  const handleQuestionChange = (questionId: string, field: string, value: any) => {
+    const updatedQuestions = formData.questions.map(q => 
+      q.id === questionId ? { ...q, [field]: value } : q
+    );
+    const updatedData = { ...formData, questions: updatedQuestions };
+    setFormData(updatedData);
+    onChange(updatedData);
+  };
 
-  const handleAddOption = (questionId: string) => {
-    const question = quizData.questions.find(q => q.id === questionId)
-    if (question && question.options) {
-      const newOptions = [...question.options, '']
-      handleUpdateQuestion(questionId, 'options', newOptions)
-    }
-  }
+  const handleDeleteQuestion = (questionId: string) => {
+    const updatedQuestions = formData.questions.filter(q => q.id !== questionId);
+    const updatedData = { ...formData, questions: updatedQuestions };
+    setFormData(updatedData);
+    onChange(updatedData);
+  };
 
-  const handleRemoveOption = (questionId: string, optionIndex: number) => {
-    const question = quizData.questions.find(q => q.id === questionId)
-    if (question && question.options) {
-      const newOptions = question.options.filter((_, index) => index !== optionIndex)
-      handleUpdateQuestion(questionId, 'options', newOptions)
+  const handleTextChange = (field: keyof QuizData, value: string) => {
+    const updatedData = { ...formData, [field]: value };
+    setFormData(updatedData);
+    onChange(updatedData);
+  };
+
+  const totalSlides = 1 + formData.questions.length + 1; // start + questions + finish
+
+  const getSlideIndicator = () => {
+    if (currentSlide === 0) {
+      return 'START';
+    } else if (currentSlide === totalSlides - 1) {
+      return 'FINISH';
+    } else {
+      return `QUESTION ${currentSlide}`;
     }
-  }
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <HelpCircle className="w-5 h-5 text-primary-600" />
-          <h3 className="text-lg font-semibold text-gray-900">Quiz Editor</h3>
+    <div className="quiz-editor">
+      {/* Top Navigation Bar */}
+      <div className="quiz-top-nav">
+        <div className="quiz-nav-group">
+          <div className="quiz-start-indicator">{getSlideIndicator()}</div>
+          {currentSlide > 0 && currentSlide < totalSlides - 1 ? (
+            // Question slide - show question type
+            <div className="quiz-question-type-nav">
+              <div className="quiz-question-type-icon">☑️</div>
+              <span>{formData.questions[currentSlide - 1]?.type === 'mcq' ? 'Multiple choice' : formData.questions[currentSlide - 1]?.type}</span>
+              <span className="dropdown-arrow">▼</span>
+            </div>
+          ) : (
+            // Start/Finish slide - show regular dropdowns
+            <>
+              <div className="quiz-nav-dropdown">
+                <List size={16} />
+                <span>Layout</span>
+                <span className="dropdown-arrow">▼</span>
+              </div>
+              <div className="quiz-nav-dropdown">
+                <Eye size={16} />
+                <span>Display options</span>
+                <span className="dropdown-arrow">▼</span>
+              </div>
+              <div className="quiz-nav-dropdown">
+                <CheckSquare size={16} />
+                <span>Alignment</span>
+                <span className="dropdown-arrow">▼</span>
+              </div>
+            </>
+          )}
         </div>
-        <button
-          onClick={handleAddQuestion}
-          className="btn-primary flex items-center space-x-2"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Question</span>
-        </button>
       </div>
 
-      <div className="space-y-6">
-        {quizData.questions.map((question, index) => (
-          <div key={question.id} className="border border-gray-200 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm font-medium text-gray-700">
-                Question {index + 1}
-              </span>
-              <button
-                onClick={() => handleDeleteQuestion(question.id)}
-                className="text-red-600 hover:text-red-700 transition-colors"
+      {/* Main Content Area */}
+      <div className="quiz-main-content">
+        <div className="quiz-content-wrapper">
+          {currentSlide === totalSlides - 1 ? (
+            // Finish Slide
+            <div className="quiz-finish-content">
+              <h1 
+                className="quiz-finish-title"
+                contentEditable
+                suppressContentEditableWarning={true}
+                onBlur={(e) => handleTextChange('finishTitle', e.currentTarget.textContent || '')}
               >
-                <Trash2 className="w-4 h-4" />
+                {formData.finishTitle || 'Congratulations! 😊'}
+              </h1>
+              <p 
+                className="quiz-finish-message"
+                contentEditable
+                suppressContentEditableWarning={true}
+                onBlur={(e) => handleTextChange('finishMessage', e.currentTarget.textContent || '')}
+              >
+                {formData.finishMessage || 'You have completed the quiz'}
+              </p>
+              <button className="quiz-continue-btn">
+                Continue
+                <span className="continue-arrow">→</span>
               </button>
             </div>
-
-            <div className="space-y-4">
-              {/* Question Type */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Question Type
-                </label>
-                <select
-                  className="input-field"
-                  value={question.type}
-                  onChange={(e) => handleUpdateQuestion(question.id, 'type', e.target.value)}
-                >
-                  {questionTypes.map(type => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
+          ) : currentSlide === 0 ? (
+            // Start Slide
+            <>
+              <h1 
+                className="quiz-title"
+                contentEditable
+                suppressContentEditableWarning={true}
+                onBlur={(e) => handleTextChange('startTitle', e.currentTarget.textContent || '')}
+              >
+                {formData.startTitle || 'Test your knowledge'}
+              </h1>
+              
+              <div className="quiz-question-count">
+                <div className="question-icon">
+                  <span>?</span>
+                </div>
+                <span>{formData.questions.length} Questions</span>
               </div>
 
-              {/* Question Text */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Question
-                </label>
-                <textarea
-                  rows={2}
-                  className="input-field"
-                  placeholder="Enter your question"
-                  value={question.question}
-                  onChange={(e) => handleUpdateQuestion(question.id, 'question', e.target.value)}
-                />
+              <div 
+                className="quiz-content-placeholder"
+                contentEditable
+                suppressContentEditableWarning={true}
+                onBlur={(e) => handleTextChange('startContent', e.currentTarget.textContent || '')}
+              >
+                <p>{formData.startContent || 'Add your content here...'}</p>
               </div>
 
-              {/* Options for MCQ and Multiple */}
-              {(question.type === 'mcq' || question.type === 'multiple') && (
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Options
-                    </label>
-                    <button
-                      onClick={() => handleAddOption(question.id)}
-                      className="text-sm text-primary-600 hover:text-primary-700"
+              <button className="quiz-get-started-btn">Get started</button>
+            </>
+          ) : (
+            // Question Slide
+            <div className="quiz-question-content">
+              {(() => {
+                const questionIndex = currentSlide - 1;
+                const question = formData.questions[questionIndex];
+                if (!question) return null;
+
+                return (
+                  <>
+                    <h2 
+                      className="quiz-question-text"
+                      contentEditable
+                      suppressContentEditableWarning={true}
+                      onBlur={(e) => handleQuestionChange(question.id, 'question', e.currentTarget.textContent || '')}
                     >
-                      + Add Option
-                    </button>
-                  </div>
-                  <div className="space-y-2">
+                      {question.question || 'Which of the following is true?'}
+                    </h2>
+
+                    <div className="quiz-options-container">
                     {question.options?.map((option, optionIndex) => (
-                      <div key={optionIndex} className="flex items-center space-x-2">
+                        <div key={optionIndex} className="quiz-option">
+                          <label className="quiz-option-label">
                         <input
-                          type={question.type === 'multiple' ? 'checkbox' : 'radio'}
-                          name={`correct-${question.id}`}
+                              type="radio"
+                              name={`question-${question.id}`}
                           checked={question.correctAnswer === optionIndex}
-                          onChange={() => handleUpdateQuestion(question.id, 'correctAnswer', optionIndex)}
-                          className="text-primary-600"
-                        />
+                              onChange={() => handleQuestionChange(question.id, 'correctAnswer', optionIndex)}
+                              className="quiz-option-radio"
+                            />
+                            <span 
+                              className="quiz-option-text"
+                              contentEditable
+                              suppressContentEditableWarning={true}
+                              onBlur={(e) => {
+                                const newOptions = [...(question.options || [])];
+                                newOptions[optionIndex] = e.currentTarget.textContent || '';
+                                handleQuestionChange(question.id, 'options', newOptions);
+                              }}
+                            >
+                              {option}
+                            </span>
+                          </label>
+                          <button 
+                            className="quiz-option-remove"
+                            onClick={() => {
+                              const newOptions = question.options?.filter((_, idx) => idx !== optionIndex) || [];
+                              handleQuestionChange(question.id, 'options', newOptions);
+                            }}
+                          >
+                            −
+                          </button>
+                        </div>
+                      ))}
+                      
+                      <div className="quiz-add-option">
                         <input
                           type="text"
-                          className="flex-1 input-field"
-                          placeholder={`Option ${optionIndex + 1}`}
-                          value={option}
-                          onChange={(e) => {
-                            const newOptions = [...(question.options || [])]
-                            newOptions[optionIndex] = e.target.value
-                            handleUpdateQuestion(question.id, 'options', newOptions)
+                          placeholder="Add an option"
+                          className="quiz-add-option-input"
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                              const newOptions = [...(question.options || []), e.currentTarget.value.trim()];
+                              handleQuestionChange(question.id, 'options', newOptions);
+                              e.currentTarget.value = '';
+                            }
                           }}
                         />
-                        <button
-                          onClick={() => handleRemoveOption(question.id, optionIndex)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <XCircle className="w-4 h-4" />
-                        </button>
                       </div>
-                    ))}
                   </div>
+                  </>
+                );
+              })()}
                 </div>
               )}
-
-              {/* True/False Options */}
-              {question.type === 'true-false' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Correct Answer
-                  </label>
-                  <div className="flex space-x-4">
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        name={`tf-${question.id}`}
-                        checked={question.correctAnswer === true}
-                        onChange={() => handleUpdateQuestion(question.id, 'correctAnswer', true)}
-                        className="text-primary-600"
-                      />
-                      <span>True</span>
-                    </label>
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        name={`tf-${question.id}`}
-                        checked={question.correctAnswer === false}
-                        onChange={() => handleUpdateQuestion(question.id, 'correctAnswer', false)}
-                        className="text-primary-600"
-                      />
-                      <span>False</span>
-                    </label>
-                  </div>
-                </div>
-              )}
-
-              {/* Explanation */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Explanation (Optional)
-                </label>
-                <textarea
-                  rows={2}
-                  className="input-field"
-                  placeholder="Explain the correct answer"
-                  value={question.explanation || ''}
-                  onChange={(e) => handleUpdateQuestion(question.id, 'explanation', e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-        ))}
-
-        {quizData.questions.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            <HelpCircle className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-            <p className="text-lg font-medium mb-2">No questions yet</p>
-            <p className="text-sm">Click "Add Question" to create your first quiz question</p>
-          </div>
-        )}
+        </div>
       </div>
 
-      {/* Preview */}
-      {quizData.questions.length > 0 && (
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-          <h4 className="text-sm font-medium text-gray-700 mb-3">Preview</h4>
-          <div className="bg-white rounded border p-4">
-            {quizData.questions.map((question, index) => (
-              <div key={question.id} className="mb-4 last:mb-0">
-                <p className="font-medium text-gray-900 mb-2">
-                  {index + 1}. {question.question || 'Question text'}
-                </p>
-                {question.type === 'mcq' && question.options && (
-                  <div className="space-y-1">
-                    {question.options.map((option, optIndex) => (
-                      <label key={optIndex} className="flex items-center space-x-2">
-                        <input type="radio" name={`preview-${question.id}`} className="text-primary-600" />
-                        <span className="text-sm">{option || `Option ${optIndex + 1}`}</span>
-                      </label>
-                    ))}
+      {/* Right Sidebar */}
+      <div className="quiz-right-sidebar">
+        <div className="quiz-sidebar-icon">
+          <CheckSquare size={20} />
+        </div>
+        <div className="quiz-sidebar-icon">
+          <List size={20} />
+        </div>
+        <div className="quiz-sidebar-icon">
+          <Eye size={20} />
+        </div>
+        <div className="quiz-sidebar-icon">
+          <div className="circle-outline"></div>
+        </div>
+      </div>
+
+
+      {/* Bottom Floating Action Bar */}
+      <div className="quiz-bottom-bar">
+        <button 
+          className={`quiz-bottom-icon ${currentSlide === 0 ? 'active' : ''}`}
+          onClick={() => setCurrentSlide(0)}
+        >
+          <MapPin size={16} />
+        </button>
+        {/* Pagination circles - only show if there are questions */}
+        {formData.questions.length > 0 && Array.from({ length: formData.questions.length }, (_, index) => (
+          <button 
+            key={index} 
+            className={`quiz-pagination-circle ${currentSlide === index + 1 ? 'active' : ''}`}
+            onClick={() => setCurrentSlide(index + 1)}
+          >
+            {index + 1}
+          </button>
+        ))}
+        <button 
+          className={`quiz-bottom-icon ${currentSlide === totalSlides - 1 ? 'active' : ''}`}
+          onClick={() => setCurrentSlide(totalSlides - 1)}
+        >
+          <Flag size={16} />
+        </button>
+        <div className="quiz-add-question-container" ref={dropdownRef}>
+          <button className="quiz-add-question-btn" onClick={handleAddQuestion}>
+            <Plus size={16} />
+            <span>Add question</span>
+          </button>
+          
+          {/* Question Type Dropdown */}
+          {showQuestionTypeDropdown && (
+            <div className="quiz-question-type-dropdown">
+              <div className="question-type-header">
+                <h3>QUESTION TYPE</h3>
+              </div>
+              <div className="question-type-list">
+                {questionTypes.map((type) => (
+                  <div 
+                    key={type.id} 
+                    className="question-type-option"
+                    onClick={() => handleQuestionTypeSelect(type.id)}
+                  >
+                    <div className="question-type-icon">{type.icon}</div>
+                    <span className="question-type-label">{type.label}</span>
                   </div>
-                )}
-                {question.type === 'true-false' && (
-                  <div className="space-y-1">
-                    <label className="flex items-center space-x-2">
-                      <input type="radio" name={`preview-${question.id}`} className="text-primary-600" />
-                      <span className="text-sm">True</span>
-                    </label>
-                    <label className="flex items-center space-x-2">
-                      <input type="radio" name={`preview-${question.id}`} className="text-primary-600" />
-                      <span className="text-sm">False</span>
-                    </label>
+                ))}
+              </div>
+            </div>
+          )}
+          </div>
+      </div>
+
+      {/* Questions List (Hidden by default, shown when questions exist) */}
+      {formData.questions.length > 0 && (
+        <div className="quiz-questions-list">
+          <h3>Questions ({formData.questions.length})</h3>
+          {formData.questions.map((question, index) => (
+            <div key={question.id} className="quiz-question-item">
+              <div className="question-header">
+                <span className="question-number">{index + 1}</span>
+                <span className="question-type">{question.type.toUpperCase()}</span>
+                <button 
+                  className="delete-question-btn"
+                  onClick={() => handleDeleteQuestion(question.id)}
+                >
+                  ×
+                </button>
                   </div>
-                )}
+              <div className="question-content">
+                <input
+                  type="text"
+                  value={question.question}
+                  onChange={(e) => handleQuestionChange(question.id, 'question', e.target.value)}
+                  className="question-input"
+                  placeholder="Enter your question..."
+                />
+              </div>
               </div>
             ))}
-          </div>
         </div>
       )}
     </div>
-  )
-}
+  );
+};
+
+export default QuizEditor;

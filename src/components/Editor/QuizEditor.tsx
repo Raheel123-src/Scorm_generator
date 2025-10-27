@@ -67,12 +67,55 @@ const questionTypes = [
   };
 
   const handleQuestionTypeSelect = (type: string) => {
+    const getDefaultQuestion = (questionType: string) => {
+      switch (questionType) {
+        case 'mcq':
+          return 'Choose the correct answer from the options below:';
+        case 'multiple':
+          return 'Select all correct answers from the options below:';
+        case 'true-false':
+          return 'Determine if the following statement is true or false:';
+        case 'short-answer':
+          return 'Provide a short answer to the following question:';
+        case 'fill-blank':
+          return 'Fill in the blanks to complete the sentence correctly:';
+        case 'match':
+          return 'Match each item with the correct option:';
+        case 'sequence':
+          return 'Arrange the following in the correct order:';
+        default:
+          return 'Answer the following question:';
+      }
+    };
+
     const newQuestion = {
       id: `question-${Date.now()}`,
       type: type as any,
-      question: 'New question',
+      question: getDefaultQuestion(type),
       options: type === 'mcq' || type === 'multiple' ? ['Option 1', 'Option 2', 'Option 3', 'Option 4'] : undefined,
-      correctAnswer: type === 'mcq' ? 0 : type === 'true-false' ? true : '',
+      correctAnswer: type === 'mcq' ? 0 : 
+                    type === 'multiple' ? [0] : 
+                    type === 'true-false' ? true : 
+                    type === 'short-answer' ? [''] : 
+                    type === 'fill-blank' ? [] : 
+                    type === 'match' ? [] : 
+                    type === 'sequence' ? [] : '',
+      sentenceParts: type === 'fill-blank' ? [
+        { type: 'text', text: 'The capital of France is' },
+        { type: 'blank', options: ['Paris', 'London', 'Berlin'], selectedAnswer: '' },
+        { type: 'text', text: '. It has a football club named as' },
+        { type: 'blank', options: ['PSG', 'Arsenal', 'Bayern'], selectedAnswer: '' }
+      ] : undefined,
+      matchPairs: type === 'match' ? [
+        { item: '', option: '' },
+        { item: '', option: '' }
+      ] : undefined,
+      sequenceItems: type === 'sequence' ? [
+        { text: 'Item 1' },
+        { text: 'Item 2' },
+        { text: 'Item 3' },
+        { text: '' }
+      ] : undefined,
       explanation: ''
     };
 
@@ -285,67 +328,576 @@ const questionTypes = [
                 const question = formData.questions[questionIndex];
                 if (!question) return null;
 
-                return (
-                  <>
-                    <h2 
-                      className="quiz-question-text"
-                      contentEditable
-                      suppressContentEditableWarning={true}
-                      onBlur={(e) => handleQuestionChange(question.id, 'question', e.currentTarget.textContent || '')}
-                    >
-                      {question.question || 'Which of the following is true?'}
-                    </h2>
+                // Render different question types
+                switch (question.type) {
+                  case 'mcq':
+                    return (
+                      <>
+                        <h2 
+                          className="quiz-question-text"
+                          contentEditable
+                          suppressContentEditableWarning={true}
+                          onBlur={(e) => handleQuestionChange(question.id, 'question', e.currentTarget.textContent || '')}
+                        >
+                          {question.question || 'Choose the correct answer from the options below:'}
+                        </h2>
 
-                    <div className="quiz-options-container">
-                    {question.options?.map((option, optionIndex) => (
-                        <div key={optionIndex} className="quiz-option">
-                          <label className="quiz-option-label">
-                        <input
-                              type="radio"
-                              name={`question-${question.id}`}
-                          checked={question.correctAnswer === optionIndex}
-                              onChange={() => handleQuestionChange(question.id, 'correctAnswer', optionIndex)}
-                              className="quiz-option-radio"
-                            />
-                            <span 
-                              className="quiz-option-text"
-                              contentEditable
-                              suppressContentEditableWarning={true}
-                              onBlur={(e) => {
-                                const newOptions = [...(question.options || [])];
-                                newOptions[optionIndex] = e.currentTarget.textContent || '';
+                        <div className="quiz-options-container">
+                          {question.options?.map((option, optionIndex) => (
+                            <div key={optionIndex} className="quiz-option">
+                              <label className="quiz-option-label">
+                                <input
+                                  type="radio"
+                                  name={`question-${question.id}`}
+                                  checked={question.correctAnswer === optionIndex}
+                                  onChange={() => handleQuestionChange(question.id, 'correctAnswer', optionIndex)}
+                                  className="quiz-option-radio"
+                                />
+                                <span 
+                                  className="quiz-option-text"
+                                  contentEditable
+                                  suppressContentEditableWarning={true}
+                                  onBlur={(e) => {
+                                    const newOptions = [...(question.options || [])];
+                                    newOptions[optionIndex] = e.currentTarget.textContent || '';
+                                    handleQuestionChange(question.id, 'options', newOptions);
+                                  }}
+                                >
+                                  {option}
+                                </span>
+                    </label>
+                    <button
+                                className="quiz-option-remove"
+                                onClick={() => {
+                                  const newOptions = question.options?.filter((_, idx) => idx !== optionIndex) || [];
+                                  handleQuestionChange(question.id, 'options', newOptions);
+                                }}
+                              >
+                                −
+                              </button>
+                            </div>
+                          ))}
+                          
+                          <div className="quiz-add-option">
+                            <button
+                              className="quiz-add-option-btn"
+                              onClick={() => {
+                                const newOptions = [...(question.options || []), `Option ${(question.options?.length || 0) + 1}`];
                                 handleQuestionChange(question.id, 'options', newOptions);
                               }}
                             >
-                              {option}
-                            </span>
-                          </label>
-                          <button 
-                            className="quiz-option-remove"
-                            onClick={() => {
-                              const newOptions = question.options?.filter((_, idx) => idx !== optionIndex) || [];
-                              handleQuestionChange(question.id, 'options', newOptions);
-                            }}
-                          >
-                            −
-                          </button>
+                              Add an option
+                    </button>
+                  </div>
                         </div>
-                      ))}
-                      
-                      <div className="quiz-add-option">
-                        <button
-                          className="quiz-add-option-btn"
-                          onClick={() => {
-                            const newOptions = [...(question.options || []), `Option ${(question.options?.length || 0) + 1}`];
-                            handleQuestionChange(question.id, 'options', newOptions);
-                          }}
+                      </>
+                    );
+
+                  case 'multiple':
+                    return (
+                      <>
+                        <h2 
+                          className="quiz-question-text"
+                          contentEditable
+                          suppressContentEditableWarning={true}
+                          onBlur={(e) => handleQuestionChange(question.id, 'question', e.currentTarget.textContent || '')}
                         >
-                          Add an option
+                          {question.question || 'Select all correct answers from the options below:'}
+                        </h2>
+
+                        <div className="quiz-options-container">
+                    {question.options?.map((option, optionIndex) => (
+                            <div key={optionIndex} className="quiz-option">
+                              <label className="quiz-option-label">
+                        <input
+                                  type="checkbox"
+                                  name={`question-${question.id}`}
+                                  checked={Array.isArray(question.correctAnswer) ? question.correctAnswer.includes(optionIndex) : false}
+                                  onChange={() => {
+                                    const currentAnswers = Array.isArray(question.correctAnswer) ? question.correctAnswer : [];
+                                    const newAnswers = currentAnswers.includes(optionIndex)
+                                      ? currentAnswers.filter(idx => idx !== optionIndex)
+                                      : [...currentAnswers, optionIndex];
+                                    handleQuestionChange(question.id, 'correctAnswer', newAnswers);
+                                  }}
+                                  className="quiz-option-checkbox"
+                                />
+                                <span 
+                                  className="quiz-option-text"
+                                  contentEditable
+                                  suppressContentEditableWarning={true}
+                                  onBlur={(e) => {
+                                    const newOptions = [...(question.options || [])];
+                                    newOptions[optionIndex] = e.currentTarget.textContent || '';
+                                    handleQuestionChange(question.id, 'options', newOptions);
+                                  }}
+                                >
+                                  {option}
+                                </span>
+                              </label>
+                        <button
+                                className="quiz-option-remove"
+                                onClick={() => {
+                                  const newOptions = question.options?.filter((_, idx) => idx !== optionIndex) || [];
+                                  handleQuestionChange(question.id, 'options', newOptions);
+                                }}
+                              >
+                                −
                         </button>
                       </div>
+                    ))}
+                          
+                          <div className="quiz-add-option">
+                            <button
+                              className="quiz-add-option-btn"
+                              onClick={() => {
+                                const newOptions = [...(question.options || []), `Option ${(question.options?.length || 0) + 1}`];
+                                handleQuestionChange(question.id, 'options', newOptions);
+                              }}
+                            >
+                              Add an option
+                            </button>
                   </div>
-                  </>
-                );
+                </div>
+                      </>
+                    );
+
+                  case 'true-false':
+                    return (
+                      <>
+                        <h2 
+                          className="quiz-question-text"
+                          contentEditable
+                          suppressContentEditableWarning={true}
+                          onBlur={(e) => handleQuestionChange(question.id, 'question', e.currentTarget.textContent || '')}
+                        >
+                          {question.question || 'Determine if the following statement is true or false:'}
+                        </h2>
+
+                        <div className="quiz-options-container">
+                          <div className="quiz-option">
+                            <label className="quiz-option-label">
+                      <input
+                        type="radio"
+                                name={`question-${question.id}`}
+                        checked={question.correctAnswer === true}
+                                onChange={() => handleQuestionChange(question.id, 'correctAnswer', true)}
+                                className="quiz-option-radio"
+                      />
+                              <span className="quiz-option-text">True</span>
+                    </label>
+                          </div>
+                          <div className="quiz-option">
+                            <label className="quiz-option-label">
+                      <input
+                        type="radio"
+                                name={`question-${question.id}`}
+                        checked={question.correctAnswer === false}
+                                onChange={() => handleQuestionChange(question.id, 'correctAnswer', false)}
+                                className="quiz-option-radio"
+                      />
+                              <span className="quiz-option-text">False</span>
+                    </label>
+                  </div>
+                        </div>
+                      </>
+                    );
+
+                  case 'short-answer':
+                    return (
+                      <>
+                        <h2 
+                          className="quiz-question-text"
+                          contentEditable
+                          suppressContentEditableWarning={true}
+                          onBlur={(e) => handleQuestionChange(question.id, 'question', e.currentTarget.textContent || '')}
+                        >
+                          {question.question || 'Provide a short answer to the following question:'}
+                        </h2>
+
+                        <div className="quiz-short-answer-container">
+                          <div className="quiz-correct-answers">
+                            {(Array.isArray(question.correctAnswer) ? question.correctAnswer : ['']).map((answer: string, index: number) => (
+                              <div key={index} className="quiz-correct-answer-item">
+                                <div className="quiz-correct-answer-input-wrapper">
+                                  <input
+                                    type="text"
+                                    value={answer}
+                                    onChange={(e) => {
+                                      const currentAnswers = Array.isArray(question.correctAnswer) ? question.correctAnswer : [''];
+                                      const newAnswers = [...currentAnswers];
+                                      newAnswers[index] = e.target.value;
+                                      handleQuestionChange(question.id, 'correctAnswer', newAnswers);
+                                    }}
+                                    className="quiz-correct-answer-input"
+                                    placeholder="Enter correct answer"
+                                  />
+                                  <button 
+                                    className="quiz-correct-answer-remove"
+                                    onClick={() => {
+                                      const currentAnswers = Array.isArray(question.correctAnswer) ? question.correctAnswer : [''];
+                                      const newAnswers = currentAnswers.filter((_, idx) => idx !== index);
+                                      handleQuestionChange(question.id, 'correctAnswer', newAnswers);
+                                    }}
+                                  >
+                                    ⊖
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                            <button
+                              className="quiz-add-answer-btn"
+                              onClick={() => {
+                                const currentAnswers = Array.isArray(question.correctAnswer) ? question.correctAnswer : [''];
+                                const newAnswers = [...currentAnswers, ''];
+                                handleQuestionChange(question.id, 'correctAnswer', newAnswers);
+                              }}
+                            >
+                              Add an option
+                            </button>
+                          </div>
+                          
+                          <div className="quiz-case-sensitive-toggle">
+                            <label className="quiz-toggle-label">
+                              <span className="quiz-case-icon">Tt</span>
+                              <span className="quiz-toggle-text">Case sensitive answers</span>
+                              <input
+                                type="checkbox"
+                                checked={question.caseSensitive || false}
+                                onChange={(e) => handleQuestionChange(question.id, 'caseSensitive', e.target.checked)}
+                                className="quiz-toggle-input"
+                              />
+                              <span className="quiz-toggle-slider"></span>
+                            </label>
+                          </div>
+                        </div>
+                      </>
+                    );
+
+                  case 'fill-blank':
+                    return (
+                      <>
+                        <h2 
+                          className="quiz-question-text"
+                          contentEditable
+                          suppressContentEditableWarning={true}
+                          onBlur={(e) => handleQuestionChange(question.id, 'question', e.currentTarget.textContent || '')}
+                        >
+                          {question.question || 'Fill in the blanks to complete the sentence correctly:'}
+                        </h2>
+
+                        <div className="quiz-fill-blank-container">
+                          <div className="quiz-sentence-builder">
+                            {question.sentenceParts?.map((part: any, index: number) => (
+                              <div key={index} className="quiz-sentence-part">
+                                {part.type === 'text' ? (
+                                  <div 
+                                    className="quiz-sentence-text"
+                                    contentEditable
+                                    suppressContentEditableWarning={true}
+                                    onBlur={(e) => {
+                                      const newParts = [...(question.sentenceParts || [])];
+                                      newParts[index].text = e.currentTarget.textContent || '';
+                                      handleQuestionChange(question.id, 'sentenceParts', newParts);
+                                    }}
+                                  >
+                                    {part.text}
+                                  </div>
+                                ) : (
+                                  <div className="quiz-blank-dropdown">
+                                    <div className="quiz-custom-dropdown">
+                                      <button 
+                                        className="quiz-dropdown-trigger"
+                                        onClick={() => {
+                                          const newParts = [...(question.sentenceParts || [])];
+                                          newParts[index].isOpen = !newParts[index].isOpen;
+                                          handleQuestionChange(question.id, 'sentenceParts', newParts);
+                                        }}
+                                      >
+                                        <span className="quiz-dropdown-text">
+                                          {part.selectedAnswer || 'Please select'}
+                                        </span>
+                                        <span className="quiz-dropdown-arrow">▼</span>
+                                      </button>
+                                      
+                                      {part.isOpen && (
+                                        <div className="quiz-dropdown-menu">
+                                          {part.options?.map((option: string, optIndex: number) => (
+                                            <div 
+                                              key={optIndex} 
+                                              className={`quiz-dropdown-option ${part.selectedAnswer === option ? 'selected' : ''}`}
+                                              onClick={() => {
+                                                const newParts = [...(question.sentenceParts || [])];
+                                                newParts[index].selectedAnswer = option;
+                                                newParts[index].isOpen = false;
+                                                handleQuestionChange(question.id, 'sentenceParts', newParts);
+                                              }}
+                                            >
+                                              <span className={`quiz-option-checkmark ${part.selectedAnswer === option ? 'selected' : ''}`}>✓</span>
+                                              <span className="quiz-option-text">{option}</span>
+                                              <button 
+                                                className="quiz-option-delete"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  const newParts = [...(question.sentenceParts || [])];
+                                                  newParts[index].options = newParts[index].options.filter((_, idx) => idx !== optIndex);
+                                                  if (newParts[index].selectedAnswer === option) {
+                                                    newParts[index].selectedAnswer = '';
+                                                  }
+                                                  handleQuestionChange(question.id, 'sentenceParts', newParts);
+                                                }}
+                                              >
+                                                −
+                                              </button>
+                                            </div>
+                                          ))}
+                                          
+                                          <div className="quiz-add-option-container">
+                                            <input
+                                              type="text"
+                                              placeholder="Enter an option"
+                                              className="quiz-add-option-input"
+                                              onKeyPress={(e) => {
+                                                if (e.key === 'Enter') {
+                                                  const input = e.target as HTMLInputElement;
+                                                  if (input.value.trim()) {
+                                                    const newParts = [...(question.sentenceParts || [])];
+                                                    newParts[index].options = [...(newParts[index].options || []), input.value.trim()];
+                                                    handleQuestionChange(question.id, 'sentenceParts', newParts);
+                                                    input.value = '';
+                                                  }
+                                                }
+                                              }}
+                                            />
+                                          </div>
+                                          
+                                          <div 
+                                            className="quiz-delete-dropdown"
+                                            onClick={() => {
+                                              const newParts = question.sentenceParts?.filter((_, idx) => idx !== index) || [];
+                                              handleQuestionChange(question.id, 'sentenceParts', newParts);
+                                            }}
+                                          >
+                                            <span className="quiz-delete-icon">🗑️</span>
+                                            <span className="quiz-delete-text">Delete dropdown</span>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          
+                          <div className="quiz-sentence-controls">
+                            <button
+                              className="quiz-add-text-btn"
+                              onClick={() => {
+                                const newParts = [...(question.sentenceParts || []), { type: 'text', text: 'Enter your question' }];
+                                handleQuestionChange(question.id, 'sentenceParts', newParts);
+                              }}
+                            >
+                              Enter your question
+                            </button>
+                            <button
+                              className="quiz-add-dropdown-btn"
+                              onClick={() => {
+                                const newParts = [...(question.sentenceParts || []), { 
+                                  type: 'blank', 
+                                  options: ['Option 1', 'Option 2', 'Option 3'],
+                                  selectedAnswer: ''
+                                }];
+                                handleQuestionChange(question.id, 'sentenceParts', newParts);
+                              }}
+                            >
+                              Add dropdown
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    );
+
+                  case 'match':
+                    return (
+                      <>
+                        <h2 
+                          className="quiz-question-text"
+                          contentEditable
+                          suppressContentEditableWarning={true}
+                          onBlur={(e) => handleQuestionChange(question.id, 'question', e.currentTarget.textContent || '')}
+                        >
+                          {question.question || 'Match each item with the correct option:'}
+                        </h2>
+
+                        <div className="quiz-match-container">
+                          <div className="quiz-match-pairs">
+                            {question.matchPairs?.map((pair: any, index: number) => (
+                              <div key={index} className="quiz-match-pair">
+                                <div className="quiz-match-item">
+                                  <input
+                                    type="text"
+                                    value={pair.item || ''}
+                                    onChange={(e) => {
+                                      const newPairs = [...(question.matchPairs || [])];
+                                      newPairs[index].item = e.target.value;
+                                      handleQuestionChange(question.id, 'matchPairs', newPairs);
+                                    }}
+                                    className="quiz-match-input"
+                                    placeholder={`Item ${index + 1}`}
+                                  />
+                                </div>
+                                
+                                <div className="quiz-match-connector">
+                                  <div className="quiz-connector-line"></div>
+                                  <div className="quiz-connector-dot">•</div>
+                                </div>
+                                
+                                <div className="quiz-match-option">
+                                  <input
+                                    type="text"
+                                    value={pair.option || ''}
+                                    onChange={(e) => {
+                                      const newPairs = [...(question.matchPairs || [])];
+                                      newPairs[index].option = e.target.value;
+                                      handleQuestionChange(question.id, 'matchPairs', newPairs);
+                                    }}
+                                    className="quiz-match-input"
+                                    placeholder={`Option ${index + 1}`}
+                                  />
+                                </div>
+                                
+                                <button 
+                                  className="quiz-match-remove"
+                                  onClick={() => {
+                                    const newPairs = question.matchPairs?.filter((_, idx) => idx !== index) || [];
+                                    handleQuestionChange(question.id, 'matchPairs', newPairs);
+                                  }}
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                          
+                          <div className="quiz-match-controls">
+                            <button
+                              className="quiz-add-match-btn"
+                              onClick={() => {
+                                const newPairs = [...(question.matchPairs || []), { item: '', option: '' }];
+                                handleQuestionChange(question.id, 'matchPairs', newPairs);
+                              }}
+                            >
+                              Add answer
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    );
+
+                  case 'sequence':
+                    return (
+                      <>
+                        <h2 
+                          className="quiz-question-text"
+                          contentEditable
+                          suppressContentEditableWarning={true}
+                          onBlur={(e) => handleQuestionChange(question.id, 'question', e.currentTarget.textContent || '')}
+                        >
+                          {question.question || 'Arrange the following in the correct order:'}
+                        </h2>
+
+                        <div className="quiz-sequence-container">
+                          <div className="quiz-sequence-items">
+                            {question.sequenceItems?.map((item: any, index: number) => (
+                              <div 
+                                key={index} 
+                                className="quiz-sequence-item"
+                                draggable
+                                onDragStart={(e) => {
+                                  e.dataTransfer.setData('text/plain', index.toString());
+                                  e.currentTarget.style.opacity = '0.5';
+                                }}
+                                onDragEnd={(e) => {
+                                  e.currentTarget.style.opacity = '1';
+                                }}
+                                onDragOver={(e) => {
+                                  e.preventDefault();
+                                }}
+                                onDrop={(e) => {
+                                  e.preventDefault();
+                                  const draggedIndex = parseInt(e.dataTransfer.getData('text/plain'));
+                                  const newItems = [...(question.sequenceItems || [])];
+                                  const draggedItem = newItems[draggedIndex];
+                                  newItems.splice(draggedIndex, 1);
+                                  newItems.splice(index, 0, draggedItem);
+                                  handleQuestionChange(question.id, 'sequenceItems', newItems);
+                                }}
+                              >
+                                <div className="quiz-sequence-number">
+                                  {index + 1}
+                                </div>
+                                <div className="quiz-sequence-input-wrapper">
+                                  <input
+                                    type="text"
+                                    value={item.text || ''}
+                                    onChange={(e) => {
+                                      const newItems = [...(question.sequenceItems || [])];
+                                      newItems[index].text = e.target.value;
+                                      handleQuestionChange(question.id, 'sequenceItems', newItems);
+                                    }}
+                                    className="quiz-sequence-input"
+                                    placeholder="Add an option"
+                                  />
+                                  {index < (question.sequenceItems?.length || 0) - 1 && (
+                                    <button 
+                                      className="quiz-sequence-remove"
+                                      onClick={() => {
+                                        const newItems = question.sequenceItems?.filter((_, idx) => idx !== index) || [];
+                                        handleQuestionChange(question.id, 'sequenceItems', newItems);
+                                      }}
+                                    >
+                                      −
+                                    </button>
+                                  )}
+                                </div>
+                                <div className="quiz-sequence-drag-handle">
+                                  ⋮⋮
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          
+                          <div className="quiz-sequence-controls">
+                            <button
+                              className="quiz-add-sequence-btn"
+                              onClick={() => {
+                                const newItems = [...(question.sequenceItems || []), { text: '' }];
+                                handleQuestionChange(question.id, 'sequenceItems', newItems);
+                              }}
+                            >
+                              Add an option
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    );
+
+                  default:
+                    return (
+                      <>
+                        <h2 
+                          className="quiz-question-text"
+                          contentEditable
+                          suppressContentEditableWarning={true}
+                          onBlur={(e) => handleQuestionChange(question.id, 'question', e.currentTarget.textContent || '')}
+                        >
+                          {question.question || 'Answer the following question:'}
+                        </h2>
+                        <p>Question type: {question.type}</p>
+                      </>
+                    );
+                }
               })()}
                 </div>
               )}

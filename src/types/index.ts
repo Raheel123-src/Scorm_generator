@@ -131,6 +131,21 @@ export interface QuizData {
     options?: string[];
     correctAnswer: any;
     explanation?: string;
+    caseSensitive?: boolean;
+    sentenceParts?: {
+      type: 'text' | 'blank';
+      text?: string;
+      options?: string[];
+      selectedAnswer?: string;
+      isOpen?: boolean;
+    }[];
+    matchPairs?: {
+      item: string;
+      option: string;
+    }[];
+    sequenceItems?: {
+      text: string;
+    }[];
   }[];
 }
 

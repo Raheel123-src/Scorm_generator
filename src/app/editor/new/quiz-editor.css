@@ -66,8 +66,51 @@
 }
 
 .quiz-question-type-nav {
-  background: #8b5cf6;
-  color: white;
+  position: relative;
+}
+
+.quiz-question-type-nav-trigger {
+  padding: 0.5rem 1rem;
+  border-radius: 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+  white-space: nowrap;
+  background: transparent;
+  color: #374151;
+}
+
+.quiz-question-type-nav-trigger:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.quiz-question-type-nav-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  max-width: 280px;
+  width: auto;
+  max-height: 300px;
+  overflow: hidden;
+  margin-top: 8px;
+  z-index: 1000;
+}
+
+
+.quiz-question-type-icon {
+  font-size: 0.875rem;
+}
+
+.quiz-feedback-nav {
+  background: transparent;
+  color: #374151;
   padding: 0.5rem 1rem;
   border-radius: 1.5rem;
   font-size: 0.875rem;
@@ -80,13 +123,35 @@
   white-space: nowrap;
 }
 
-.quiz-question-type-nav:hover {
-  background: #7c3aed;
+.quiz-feedback-nav:hover {
+  background: transparent;
 }
 
-.quiz-question-type-icon {
-  font-size: 0.875rem;
+.quiz-nav-separator {
+  width: 1px;
+  height: 1.5rem;
+  background: #e2e8f0;
+  margin: 0 0.5rem;
 }
+
+.quiz-action-btn {
+  background: transparent;
+  color: #6b7280;
+  padding: 0.5rem;
+  border-radius: 1.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  width: 2rem;
+  height: 2rem;
+}
+
+.quiz-action-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
 
 .dropdown-arrow {
   font-size: 0.75rem;
@@ -96,7 +161,6 @@
 
 /* Main Content Area */
 .quiz-main-content {
-  padding-top: 2rem;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -106,7 +170,8 @@
 .quiz-content-wrapper {
   text-align: center;
   max-width: 1200px;
-  padding: 2rem;
+
+  min-width: 80%;
 }
 
 .quiz-title {
@@ -544,8 +609,8 @@
 }
 
 .quiz-question-text {
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-size: 0.89rem;
+  font-weight: 350;
   color: #374151;
   margin: 0 0 2.5rem 0;
   line-height: 1.3;
@@ -558,16 +623,7 @@
   text-align: left;
 }
 
-.quiz-question-text:hover {
-  border-color: #e2e8f0;
-  background-color: #f8fafc;
-}
-
-.quiz-question-text:focus {
-  border-color: #8b5cf6;
-  background-color: #faf5ff;
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
-}
+/* Removed hover and focus effects for MCQ view */
 
 .quiz-options-container {
   display: flex;
@@ -580,20 +636,16 @@
 .quiz-option {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   background: white;
-  border: 1px solid #e2e8f0;
   border-radius: 16px;
   transition: all 0.2s ease;
-  min-height: 4.375rem;
+  min-height: 4rem;
   width: 100%;
   max-width: min(52.5rem, 90vw);
 }
 
-.quiz-option:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
+/* Removed hover effects for MCQ view */
 
 .quiz-option-label {
   display: flex;
@@ -612,7 +664,7 @@
   cursor: pointer;
   position: relative;
   transition: all 0.2s ease;
-  margin-right: 1rem;
+  margin-left: 1rem;
 }
 
 .quiz-option-radio:checked {
@@ -636,24 +688,16 @@
   font-size: 1rem;
   color: #374151;
   outline: none;
-  border: 2px solid transparent;
   border-radius: 6px;
   padding: 4px 8px;
   transition: all 0.2s ease;
   cursor: text;
   flex: 1;
+  text-align: left;
+  font-weight: 600;
 }
 
-.quiz-option-text:hover {
-  border-color: #e2e8f0;
-  background-color: #f8fafc;
-}
-
-.quiz-option-text:focus {
-  border-color: #8b5cf6;
-  background-color: #faf5ff;
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
-}
+/* Removed hover and focus effects for MCQ view */
 
 .quiz-option-remove {
   width: 28px;
@@ -669,20 +713,15 @@
   font-size: 1rem;
   font-weight: bold;
   transition: all 0.2s ease;
+  margin-right: 1rem;
 }
 
-.quiz-option-remove:hover {
-  background: #ef4444;
-  color: white;
-}
+/* Removed hover effects for MCQ view */
 
-.quiz-add-option {
-  margin-top: 1rem;
-}
 
-.quiz-add-option-input {
+
+.quiz-add-option-btn {
   width: 100%;
-  padding: 1.5rem 2.5rem;
   border: 1px solid #e2e8f0;
   border-radius: 16px;
   font-size: 1rem;
@@ -690,21 +729,16 @@
   background: #f8fafc;
   outline: none;
   transition: all 0.2s ease;
-  min-height: 4.375rem;
+  min-height: 4rem;
   max-width: min(52.5rem, 90vw);
-  margin: 0 auto;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding-left: 2.5rem;
+  font-weight: 550;
 }
 
-.quiz-add-option-input:focus {
-  border-color: #8b5cf6;
-  background: white;
-  color: #374151;
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
-}
-
-.quiz-add-option-input::placeholder {
-  color: #9ca3af;
-}
+/* Removed focus effects for MCQ view */
 
 /* Responsive Design */
 @media (max-width: 768px) {

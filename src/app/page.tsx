@@ -13,7 +13,7 @@ export default function LandingPage() {
           <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '4rem'}}>
             <div style={{display: 'flex', alignItems: 'center'}}>
               <div>
-                <h1 style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#9333ea'}}>SCORM Generator</h1>
+                <h1 style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#9333ea'}}>LisaStudio</h1>
               </div>
             </div>
             <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
@@ -38,12 +38,12 @@ export default function LandingPage() {
             style={{textAlign: 'center'}}
           >
             <h1 style={{fontSize: '3rem', fontWeight: 'bold', color: '#111827', marginBottom: '1.5rem'}}>
-              Create SCORM Packages
+              Create Interactive Courses
               <span style={{display: 'block', color: '#9333ea'}}>with Ease</span>
             </h1>
             <p style={{fontSize: '1.25rem', color: '#6b7280', marginBottom: '2rem', maxWidth: '768px', margin: '0 auto 2rem'}}>
               Build interactive e-learning content using our intuitive editor. 
-              Generate SCORM packages from scratch or upload documents for auto-generation.
+              Generate courses from scratch or upload documents for auto-generation.
             </p>
             
             <div style={{display: 'flex', flexDirection: 'column', gap: '1rem', justifyContent: 'center', alignItems: 'center'}}>
@@ -54,7 +54,7 @@ export default function LandingPage() {
               >
                 <Link href="/signup" className="btn-primary" style={{fontSize: '1.125rem', padding: '0.75rem 2rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem'}}>
                   <FileText style={{width: '1.25rem', height: '1.25rem'}} />
-                  Generate SCORM from Scratch
+                  Generate Course from Scratch
                   <ArrowRight style={{width: '1.25rem', height: '1.25rem'}} />
                 </Link>
               </motion.div>
@@ -122,7 +122,7 @@ export default function LandingPage() {
             transition={{ duration: 0.6 }}
           >
             <h2 style={{fontSize: '2.25rem', fontWeight: 'bold', color: 'white', marginBottom: '1rem'}}>
-              Ready to Create Your First SCORM Package?
+              Ready to Create Your First Course?
             </h2>
             <p style={{fontSize: '1.25rem', color: '#e9d5ff', marginBottom: '2rem'}}>
               Join thousands of educators and trainers creating engaging e-learning content
@@ -139,8 +139,8 @@ export default function LandingPage() {
       <footer style={{background: '#111827', color: 'white', padding: '3rem 0'}}>
         <div style={{maxWidth: '1280px', margin: '0 auto', padding: '0 1rem'}}>
           <div style={{textAlign: 'center'}}>
-            <h3 style={{fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem'}}>SCORM Generator Platform</h3>
-            <p style={{color: '#9ca3af'}}>© 2024 SCORM Generator. All rights reserved.</p>
+            <h3 style={{fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem'}}>LisaStudio Platform</h3>
+            <p style={{color: '#9ca3af'}}>© 2024 LisaStudio. All rights reserved.</p>
           </div>
         </div>
       </footer>

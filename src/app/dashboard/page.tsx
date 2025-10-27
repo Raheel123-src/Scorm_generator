@@ -118,7 +118,7 @@ export default function DashboardPage() {
               color: '#9333ea',
               textDecoration: 'none'
             }}>
-              SCORM Generator
+              LisaStudio
             </Link>
           </div>
 
@@ -142,7 +142,7 @@ export default function DashboardPage() {
               }}
             >
               <FileText size={20} style={{ marginRight: '0.75rem' }} />
-              My SCORMs
+              My Courses
             </button>
             
             <button
@@ -163,7 +163,7 @@ export default function DashboardPage() {
               }}
             >
               <Plus size={20} style={{ marginRight: '0.75rem' }} />
-              Create New SCORM
+              Create New Course
             </button>
             
             <button
@@ -241,13 +241,13 @@ export default function DashboardPage() {
               marginBottom: '0.5rem',
               margin: 0
             }}>
-              {activeTab === 'my-scorms' && 'My SCORM Packages'}
-              {activeTab === 'create-new' && 'Create New SCORM'}
+              {activeTab === 'my-scorms' && 'My Courses'}
+              {activeTab === 'create-new' && 'Create New Course'}
               {activeTab === 'account' && 'Account Settings'}
             </h1>
             <p style={{ color: '#6b7280', margin: 0 }}>
-              {activeTab === 'my-scorms' && 'Manage and edit your SCORM packages'}
-              {activeTab === 'create-new' && 'Start building your new SCORM package'}
+              {activeTab === 'my-scorms' && 'Manage and edit your courses'}
+              {activeTab === 'create-new' && 'Start building your new course'}
               {activeTab === 'account' && 'Manage your account settings and preferences'}
             </p>
           </div>
@@ -284,10 +284,10 @@ export default function DashboardPage() {
                 }}>
                   <FileText size={48} style={{ color: '#9ca3af', marginBottom: '1rem' }} />
                   <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#111827', marginBottom: '0.5rem' }}>
-                    No SCORM packages yet
+                    No courses yet
                   </h3>
                   <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
-                    Create your first SCORM package to get started
+                    Create your first course to get started
                   </p>
                   <Link href="/editor/new" style={{
                     display: 'inline-flex',
@@ -301,7 +301,7 @@ export default function DashboardPage() {
                     fontWeight: '500'
                   }}>
                     <Plus size={20} />
-                    Create First SCORM
+                    Create First Course
                   </Link>
                 </div>
               ) : (
@@ -412,7 +412,7 @@ export default function DashboardPage() {
                   marginBottom: '1rem',
                   margin: 0
                 }}>
-                  Create New SCORM Package
+                  Create New Course Package
                 </h2>
                 <form style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   <div>
@@ -423,7 +423,7 @@ export default function DashboardPage() {
                       color: '#374151',
                       marginBottom: '0.25rem'
                     }}>
-                      SCORM Title
+                      Course Title
                     </label>
                     <input
                       type="text"
@@ -438,7 +438,7 @@ export default function DashboardPage() {
                         transition: 'border-color 0.2s, box-shadow 0.2s',
                         boxSizing: 'border-box'
                       }}
-                      placeholder="Enter SCORM title"
+                      placeholder="Enter course title"
                     />
                   </div>
                   <div>
@@ -465,7 +465,7 @@ export default function DashboardPage() {
                         boxSizing: 'border-box',
                         resize: 'vertical'
                       }}
-                      placeholder="Enter SCORM description"
+                      placeholder="Enter course description"
                     />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -479,7 +479,7 @@ export default function DashboardPage() {
                       cursor: 'pointer',
                       fontSize: '0.875rem'
                     }}>
-                      Create SCORM
+                      Create Course
                     </button>
                     <button type="button" style={{
                       background: 'white',
@@ -632,7 +632,7 @@ export default function DashboardPage() {
             }}
           >
             <Plus size={24} />
-            <span style={{ fontSize: '0.875rem' }}>New SCORM</span>
+            <span style={{ fontSize: '0.875rem' }}>New Course</span>
           </Link>
         </motion.div>
       )}

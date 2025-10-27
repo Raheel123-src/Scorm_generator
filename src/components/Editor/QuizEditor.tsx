@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { QuizData } from '../../types';
 import { Plus, Eye, CheckSquare, List, MoreVertical, Image as ImageIcon, Flag, MapPin } from 'lucide-react';
+import { LuMessageSquareMore } from "react-icons/lu";
+import { IoDuplicateOutline } from "react-icons/io5";
+import { FaRegTrashCan } from "react-icons/fa6";
 
 interface QuizEditorProps {
   data: QuizData;
@@ -20,8 +23,10 @@ const QuizEditor: React.FC<QuizEditorProps> = ({ data, onChange }) => {
   const [displayOptions, setDisplayOptions] = useState('standard');
   const [alignment, setAlignment] = useState('left');
   const [showQuestionTypeDropdown, setShowQuestionTypeDropdown] = useState(false);
+  const [showQuestionTypeNavDropdown, setShowQuestionTypeNavDropdown] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const questionTypeNavRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setFormData(data);
@@ -33,16 +38,19 @@ const QuizEditor: React.FC<QuizEditorProps> = ({ data, onChange }) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowQuestionTypeDropdown(false);
       }
+      if (questionTypeNavRef.current && !questionTypeNavRef.current.contains(event.target as Node)) {
+        setShowQuestionTypeNavDropdown(false);
+      }
     };
 
-    if (showQuestionTypeDropdown) {
+    if (showQuestionTypeDropdown || showQuestionTypeNavDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showQuestionTypeDropdown]);
+  }, [showQuestionTypeDropdown, showQuestionTypeNavDropdown]);
 
 const questionTypes = [
     { id: 'mcq', label: 'Multiple choice', icon: '☑️' },
@@ -93,10 +101,37 @@ const questionTypes = [
     onChange(updatedData);
   };
 
-  const handleTextChange = (field: keyof QuizData, value: string) => {
-    const updatedData = { ...formData, [field]: value };
+  const handleDuplicateQuestion = (questionId: string) => {
+    const questionToDuplicate = formData.questions.find(q => q.id === questionId);
+    if (questionToDuplicate) {
+      const duplicatedQuestion = {
+        ...questionToDuplicate,
+        id: `question-${Date.now()}`,
+        question: questionToDuplicate.question
+      };
+      
+      const questionIndex = formData.questions.findIndex(q => q.id === questionId);
+      const updatedData = {
+        ...formData,
+        questions: [
+          ...formData.questions.slice(0, questionIndex + 1),
+          duplicatedQuestion,
+          ...formData.questions.slice(questionIndex + 1)
+        ]
+      };
+      setFormData(updatedData);
+      onChange(updatedData);
+    }
+  };
+
+  const handleQuestionTypeChange = (questionId: string, newType: string) => {
+    const updatedQuestions = formData.questions.map(q => 
+      q.id === questionId ? { ...q, type: newType } : q
+    );
+    const updatedData = { ...formData, questions: updatedQuestions };
     setFormData(updatedData);
     onChange(updatedData);
+    setShowQuestionTypeNavDropdown(false);
   };
 
   const totalSlides = 1 + formData.questions.length + 1; // start + questions + finish
@@ -118,12 +153,50 @@ const questionTypes = [
         <div className="quiz-nav-group">
           <div className="quiz-start-indicator">{getSlideIndicator()}</div>
           {currentSlide > 0 && currentSlide < totalSlides - 1 ? (
-            // Question slide - show question type
-            <div className="quiz-question-type-nav">
-              <div className="quiz-question-type-icon">☑️</div>
-              <span>{formData.questions[currentSlide - 1]?.type === 'mcq' ? 'Multiple choice' : formData.questions[currentSlide - 1]?.type}</span>
-              <span className="dropdown-arrow">▼</span>
-            </div>
+            // Question slide - show question options
+            <>
+              <div className="quiz-question-type-nav" ref={questionTypeNavRef}>
+                <div 
+                  className="quiz-question-type-nav-trigger"
+                  onClick={() => setShowQuestionTypeNavDropdown(!showQuestionTypeNavDropdown)}
+                >
+                  <div className="quiz-question-type-icon">☑️</div>
+                  <span>{formData.questions[currentSlide - 1]?.type === 'mcq' ? 'Multiple choice' : formData.questions[currentSlide - 1]?.type}</span>
+                  <span className="dropdown-arrow">▼</span>
+                </div>
+                
+                {showQuestionTypeNavDropdown && (
+                  <div className="quiz-question-type-nav-dropdown">
+                    <div className="question-type-header">
+                      <h3>Question Type</h3>
+                    </div>
+                    <div className="question-type-list">
+                      {questionTypes.map((type) => (
+                        <div
+                          key={type.id}
+                          className="question-type-option"
+                          onClick={() => handleQuestionTypeChange(formData.questions[currentSlide - 1]?.id, type.id)}
+                        >
+                          <div className="question-type-icon">{type.icon}</div>
+                          <div className="question-type-label">{type.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="quiz-feedback-nav">
+                <LuMessageSquareMore size={16} />
+                <span>Feedback message</span>
+              </div>
+              <div className="quiz-nav-separator"></div>
+              <div className="quiz-action-btn" onClick={() => handleDuplicateQuestion(formData.questions[currentSlide - 1]?.id)}>
+                <IoDuplicateOutline size={16} />
+              </div>
+              <div className="quiz-action-btn" onClick={() => handleDeleteQuestion(formData.questions[currentSlide - 1]?.id)}>
+                <FaRegTrashCan size={16} />
+              </div>
+            </>
           ) : (
             // Start/Finish slide - show regular dropdowns
             <>
@@ -260,18 +333,15 @@ const questionTypes = [
                       ))}
                       
                       <div className="quiz-add-option">
-                        <input
-                          type="text"
-                          placeholder="Add an option"
-                          className="quiz-add-option-input"
-                          onKeyPress={(e) => {
-                            if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                              const newOptions = [...(question.options || []), e.currentTarget.value.trim()];
-                              handleQuestionChange(question.id, 'options', newOptions);
-                              e.currentTarget.value = '';
-                            }
+                        <button
+                          className="quiz-add-option-btn"
+                          onClick={() => {
+                            const newOptions = [...(question.options || []), `Option ${(question.options?.length || 0) + 1}`];
+                            handleQuestionChange(question.id, 'options', newOptions);
                           }}
-                        />
+                        >
+                          Add an option
+                        </button>
                       </div>
                   </div>
                   </>
@@ -376,7 +446,7 @@ const questionTypes = [
                   className="question-input"
                   placeholder="Enter your question..."
                 />
-              </div>
+                  </div>
               </div>
             ))}
         </div>

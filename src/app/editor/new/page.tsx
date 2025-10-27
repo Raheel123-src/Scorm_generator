@@ -51,7 +51,7 @@ interface ContentBlock {
 }
 
 export default function EditorPage() {
-  const [scormTitle, setScormTitle] = useState('My SCORM Package')
+  const [scormTitle, setScormTitle] = useState('My Course')
   const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([
     {
       id: '1',
@@ -477,7 +477,7 @@ export default function EditorPage() {
         },
         body: JSON.stringify({
           title: scormTitle,
-          description: 'Generated SCORM package',
+          description: 'Generated course package',
           content: processedBlocks
         })
       })
@@ -575,11 +575,11 @@ export default function EditorPage() {
       document.body.removeChild(a)
 
       console.log('SCORM package downloaded successfully')
-      alert(`SCORM package generated successfully${includeTTS ? ' with AI voice narration' : ''}!`)
+      alert(`Course package generated successfully${includeTTS ? ' with AI voice narration' : ''}!`)
     } catch (error) {
       console.error('Error generating SCORM package:', error)
       const errorMessage = error instanceof Error ? error.message : 'Please try again.'
-      alert(`Failed to generate SCORM package: ${errorMessage}`)
+      alert(`Failed to generate course package: ${errorMessage}`)
     } finally {
       setLoading(false)
     }
@@ -1082,7 +1082,7 @@ export default function EditorPage() {
           </Link>
           <div style={{ width: '1px', height: '2rem', background: '#e5e7eb' }} />
           <h1 className="editor-title">
-            SCORM Editor
+            LisaStudio
           </h1>
         </div>
         
@@ -1180,7 +1180,7 @@ export default function EditorPage() {
               }}
             >
               {includeVoice ? <Droplets size={16} /> : <FileText size={16} />}
-              {includeVoice ? 'Generate with Voice' : 'Generate SCORM'}
+              {includeVoice ? 'Generate with Voice' : 'Generate Course'}
             </button>
           </div>
           <button 
@@ -1209,19 +1209,6 @@ export default function EditorPage() {
         <div className="main-content">
           {/* Left Sidebar */}
           <div className="sidebar">
-          {/* Content Blocks Header */}
-          <div className="sidebar-header">
-            <h2 className="sidebar-title">
-              Content Blocks
-            </h2>
-            <button
-              onClick={() => setShowAddMenu(!showAddMenu)}
-              className="add-block-btn"
-            >
-              <Plus size={16} />
-              Add screen
-            </button>
-          </div>
 
           {/* Add Content Type Menu */}
           {showAddMenu && (
@@ -1523,6 +1510,17 @@ export default function EditorPage() {
                 </motion.div>
               ))}
             </div>
+          </div>
+          
+          {/* Add Button - Fixed at Bottom */}
+          <div className="sidebar-footer">
+            <button
+              onClick={() => setShowAddMenu(!showAddMenu)}
+              className="add-block-btn"
+            >
+              <Plus size={16} />
+              Add screen
+            </button>
           </div>
         </div>
 

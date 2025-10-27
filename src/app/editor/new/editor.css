@@ -7,7 +7,6 @@
 /* Header Styles */
 .main-content-header {
   background: white;
-  border-bottom: 1px solid #e5e7eb;
   padding: 1rem 2rem;
   display: flex;
   align-items: center;
@@ -95,24 +94,10 @@
 /* Sidebar Styles */
 .sidebar {
   width: 220px;
-  background: #f8fafc;
-  border-right: 1px solid #e5e7eb;
+  background: white;
   display: flex;
   flex-direction: column;
   position: relative;
-}
-
-.sidebar-header {
-  padding: 1.5rem 1rem;
-  border-bottom: 1px solid #e5e7eb;
-  background: white;
-}
-
-.sidebar-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #111827;
-  margin: 0 0 1rem 0;
 }
 
 .add-block-btn {
@@ -141,7 +126,15 @@
   flex: 1;
   padding: 1rem;
   overflow-y: auto;
-  background: #f8fafc;
+  background: white;
+}
+
+.sidebar-footer {
+  padding: 1rem;
+  background: white;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
 }
 
 .content-blocks {
@@ -176,9 +169,7 @@
   transform: translateY(-50%);
   width: 2rem;
   height: 2rem;
-  background: #6b7280;
-  color: white;
-  border-radius: 50%;
+  color: black;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -188,7 +179,7 @@
 }
 
 .content-block-preview.active .content-block-number {
-  background: #3b82f6;
+  color: black;
 }
 
 .mini-preview-container {

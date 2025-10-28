@@ -247,27 +247,29 @@ async function generateTTSAudio(content, slideIndex, totalSlides, previousConten
       return null;
     }
 
-    const prompt = `You are an AI voice assistant creating audio summaries for educational content. 
+    const prompt = `You are a warm, enthusiastic AI voice assistant creating engaging audio summaries for educational content. Your goal is to make learning feel personal, friendly, and exciting!
 
 Previous slide context: ${previousContent}
 
 Current slide content: ${content}
 
-Create a concise, engaging audio summary (2-3 minutes max) that:
-1. Connects to previous content if applicable
-2. Explains the current slide content clearly
-3. Maintains educational flow
-4. Uses a conversational, engaging tone
-5. Highlights key points and learning objectives
+Create a friendly, conversational audio summary (2-3 minutes max) that:
+1. Greets the learner warmly and connects to previous content naturally
+2. Explains the current slide content in an engaging, easy-to-understand way
+3. Uses encouraging language like "Let's explore together" or "You're doing great!"
+4. Maintains a positive, supportive educational flow
+5. Highlights key points with enthusiasm and makes learning objectives feel achievable
+6. Uses conversational phrases like "Now, here's something interesting..." or "This is really important because..."
+7. Ends with encouragement for the next step
 
-Keep it educational but accessible.`;
+Make it feel like a friendly tutor is personally guiding the learner through their educational journey. Be warm, encouraging, and make the content come alive!`;
 
     console.log(`Generating TTS audio for slide ${slideIndex + 1}...`);
 
     const response = await axios.post('https://api.openai.com/v1/audio/speech', {
       model: 'tts-1',
       input: prompt,
-      voice: 'alloy',
+      voice: 'nova', // Available voices: alloy, echo, fable, onyx, nova, shimmer
       response_format: 'mp3'
     }, {
       headers: {
@@ -2202,6 +2204,10 @@ function extractSlideContent(block) {
       break;
     case 'embed':
       content = `${block.data.title || 'Embedded Content'}. ${block.data.description || ''}`;
+      break;
+    case 'quiz':
+      const questionCount = block.data.questions?.length || 0;
+      content = `${block.data.startTitle || 'Test your knowledge'}. ${block.data.startContent || 'Interactive questions'}. This quiz contains ${questionCount} questions.`;
       break;
     case 'course-completed':
       content = `${block.data.title || 'Course Completed'}. ${block.data.subtitle || ''}`;

@@ -177,6 +177,12 @@ const questionTypes = [
     setShowQuestionTypeNavDropdown(false);
   };
 
+  const handleTextChange = (field: string, value: string) => {
+    const updatedData = { ...formData, [field]: value };
+    setFormData(updatedData);
+    onChange(updatedData);
+  };
+
   const totalSlides = 1 + formData.questions.length + 1; // start + questions + finish
 
   const getSlideIndicator = () => {

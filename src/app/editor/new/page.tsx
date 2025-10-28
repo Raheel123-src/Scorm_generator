@@ -1326,8 +1326,12 @@ export default function EditorPage() {
                         <div className="mini-preview">
                           <div className="mini-preview-content">
                             <div className="mini-preview-icon">❓</div>
-                            <div className="mini-preview-title">Test your knowledge</div>
-                            <div className="mini-preview-description">Interactive questions</div>
+                            <div className="mini-preview-title">{block.data.startTitle || 'Test your knowledge'}</div>
+                            <div className="mini-preview-description">{block.data.startContent || 'Interactive questions'}</div>
+                            <div className="mini-preview-question-count">
+                              <div className="mini-preview-question-icon">?</div>
+                              <span>{block.data.questions?.length || 0} Questions</span>
+                            </div>
                           </div>
                         </div>
                       )}

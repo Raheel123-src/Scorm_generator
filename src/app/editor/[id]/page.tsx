@@ -41,13 +41,19 @@ const mockContentBlocks: ContentBlock[] = [
     type: 'quiz',
     title: 'Knowledge Check',
     data: {
+      title: 'Quiz',
+      startTitle: 'Test your knowledge',
+      startContent: 'Add your content here...',
+      finishTitle: 'Congratulations! 😊',
+      finishMessage: 'You have completed the quiz',
       questions: [
         {
           id: '1',
           type: 'mcq',
           question: 'What is React?',
           options: ['A library', 'A framework', 'A language', 'A database'],
-          correctAnswer: 0
+          correctAnswer: 0,
+          explanation: 'React is a JavaScript library for building user interfaces.'
         }
       ]
     },

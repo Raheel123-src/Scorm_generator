@@ -140,7 +140,23 @@ export default function EditorPage() {
   const getDefaultData = (type: string) => {
     const defaults: { [key: string]: any } = {
       welcome: { title: 'Welcome', description: '', duration: 5 },
-      quiz: { title: 'Quiz', questions: [] },
+      quiz: { 
+        title: 'Quiz', 
+        startTitle: 'Test your knowledge',
+        startContent: 'Add your content here...',
+        finishTitle: 'Congratulations! 😊',
+        finishMessage: 'You have completed the quiz',
+        questions: [
+          {
+            id: '1',
+            type: 'mcq',
+            question: 'What is React?',
+            options: ['A library', 'A framework', 'A language', 'A database'],
+            correctAnswer: 0,
+            explanation: 'React is a JavaScript library for building user interfaces.'
+          }
+        ]
+      },
       text: { title: 'Content', text: '', image: '' },
       video: { title: 'Video', url: '', description: '' },
       document: { title: 'Document', url: '', description: '' },
@@ -635,96 +651,224 @@ export default function EditorPage() {
       case 'quiz':
         return (
           <div style={{ 
-            background: '#f8fafc', 
+            background: 'white', 
             borderRadius: '1rem', 
-            padding: '2rem', 
-            textAlign: 'center',
-            minHeight: '200px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
+            padding: '0',
+            minHeight: '400px',
+            maxHeight: '600px',
+            overflow: 'hidden',
+            border: '1px solid #e5e7eb',
+            width: '100%',
+            height: '100%'
           }}>
-            <div>
-              <HelpCircle size={48} style={{ color: '#059669', marginBottom: '1rem' }} />
-              <h3 style={{ color: '#111827', marginBottom: '0.5rem' }}>Quiz Preview</h3>
-              <p style={{ color: '#6b7280' }}>Interactive questions and answers</p>
-            </div>
+            <QuizEditor 
+              data={{
+                startTitle: 'Test your knowledge',
+                startContent: 'Add your content here...',
+                finishTitle: 'Congratulations! 😊',
+                finishMessage: 'You have completed the quiz',
+                questions: [
+                  {
+                    id: '1',
+                    type: 'mcq',
+                    question: 'What is React?',
+                    options: ['A library', 'A framework', 'A language', 'A database'],
+                    correctAnswer: 0,
+                    explanation: 'React is a JavaScript library for building user interfaces.'
+                  }
+                ]
+              }}
+              onChange={() => {}} // No-op for preview
+            />
           </div>
         )
       case 'video':
         return (
           <div style={{ 
-            background: '#1f2937', 
+            background: 'white', 
             borderRadius: '1rem', 
-            padding: '2rem', 
-            textAlign: 'center',
-            minHeight: '200px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
+            padding: '0',
+            minHeight: '400px',
+            maxHeight: '600px',
+            overflow: 'hidden',
+            border: '1px solid #e5e7eb',
+            width: '100%',
+            height: '100%'
           }}>
-            <div>
-              <Video size={48} style={{ color: '#7c3aed', marginBottom: '1rem' }} />
-              <h3 style={{ color: 'white', marginBottom: '0.5rem' }}>Video Preview</h3>
-              <p style={{ color: '#9ca3af' }}>Embedded video content</p>
-            </div>
+            <VideoEditor 
+              data={{
+                title: 'Video',
+                videoUrl: '',
+                enforceCompletion: false,
+                description: 'Add your video content here...'
+              }}
+              onChange={() => {}} // No-op for preview
+            />
           </div>
         )
       case 'document':
         return (
           <div style={{ 
-            background: '#fef3c7', 
+            background: 'white', 
             borderRadius: '1rem', 
-            padding: '2rem', 
-            textAlign: 'center',
-            minHeight: '200px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
+            padding: '0',
+            minHeight: '400px',
+            maxHeight: '600px',
+            overflow: 'hidden',
+            border: '1px solid #e5e7eb',
+            width: '100%',
+            height: '100%'
           }}>
-            <div>
-              <FileText size={48} style={{ color: '#ea580c', marginBottom: '1rem' }} />
-              <h3 style={{ color: '#111827', marginBottom: '0.5rem' }}>Document Preview</h3>
-              <p style={{ color: '#6b7280' }}>PDF or document viewer</p>
-            </div>
+            <DocumentEditor 
+              data={{
+                title: 'Document',
+                documentUrl: '',
+                enforceCompletion: false,
+                description: 'Add your document content here...'
+              }}
+              onChange={() => {}} // No-op for preview
+            />
           </div>
         )
       case 'hotspot':
         return (
           <div style={{ 
-            background: '#fce7f3', 
+            background: 'white', 
             borderRadius: '1rem', 
-            padding: '2rem', 
-            textAlign: 'center',
-            minHeight: '200px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
+            padding: '0',
+            minHeight: '400px',
+            maxHeight: '600px',
+            overflow: 'hidden',
+            border: '1px solid #e5e7eb',
+            width: '100%',
+            height: '100%'
           }}>
-            <div>
-              <Target size={48} style={{ color: '#be185d', marginBottom: '1rem' }} />
-              <h3 style={{ color: '#111827', marginBottom: '0.5rem' }}>Hotspot Preview</h3>
-              <p style={{ color: '#6b7280' }}>Interactive image with clickable areas</p>
-            </div>
+            <HotspotImageEditor 
+              data={{
+                title: 'Hotspot',
+                description: 'Add your hotspot content here...',
+                imageUrl: '',
+                altText: '',
+                hotspots: []
+              }}
+              onChange={() => {}} // No-op for preview
+            />
           </div>
         )
       case 'accordion':
         return (
           <div style={{ 
-            background: '#f0fdf4', 
+            background: 'white', 
             borderRadius: '1rem', 
-            padding: '2rem', 
-            textAlign: 'center',
-            minHeight: '200px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
+            padding: '0',
+            minHeight: '400px',
+            maxHeight: '600px',
+            overflow: 'hidden',
+            border: '1px solid #e5e7eb',
+            width: '100%',
+            height: '100%'
           }}>
-            <div>
-              <ChevronDown size={48} style={{ color: '#65a30d', marginBottom: '1rem' }} />
-              <h3 style={{ color: '#111827', marginBottom: '0.5rem' }}>Accordion Preview</h3>
-              <p style={{ color: '#6b7280' }}>Expandable content sections</p>
-            </div>
+            <AccordionEditor 
+              data={{
+                title: 'Accordion',
+                description: 'Add your accordion content here...',
+                items: []
+              }}
+              onChange={() => {}} // No-op for preview
+            />
+          </div>
+        )
+      case 'checklist':
+        return (
+          <div style={{ 
+            background: 'white', 
+            borderRadius: '1rem', 
+            padding: '0',
+            minHeight: '400px',
+            maxHeight: '600px',
+            overflow: 'hidden',
+            border: '1px solid #e5e7eb',
+            width: '100%',
+            height: '100%'
+          }}>
+            <ChecklistEditor 
+              data={{
+                title: 'Checklist',
+                items: []
+              }}
+              onChange={() => {}} // No-op for preview
+            />
+          </div>
+        )
+      case 'text-image':
+        return (
+          <div style={{ 
+            background: 'white', 
+            borderRadius: '1rem', 
+            padding: '0',
+            minHeight: '400px',
+            maxHeight: '600px',
+            overflow: 'hidden',
+            border: '1px solid #e5e7eb',
+            width: '100%',
+            height: '100%'
+          }}>
+            <TextImageEditor 
+              data={{
+                title: 'Content',
+                content: '',
+                image: '',
+                layout: 'right',
+                altText: ''
+              }}
+              onChange={() => {}} // No-op for preview
+            />
+          </div>
+        )
+      case 'flashcards':
+        return (
+          <div style={{ 
+            background: 'white', 
+            borderRadius: '1rem', 
+            padding: '0',
+            minHeight: '400px',
+            maxHeight: '600px',
+            overflow: 'hidden',
+            border: '1px solid #e5e7eb',
+            width: '100%',
+            height: '100%'
+          }}>
+            <FlashcardEditor 
+              data={{
+                title: 'Flashcards',
+                description: 'Add your flashcard content here...',
+                cards: []
+              }}
+              onChange={() => {}} // No-op for preview
+            />
+          </div>
+        )
+      case 'embed':
+        return (
+          <div style={{ 
+            background: 'white', 
+            borderRadius: '1rem', 
+            padding: '0',
+            minHeight: '400px',
+            maxHeight: '600px',
+            overflow: 'hidden',
+            border: '1px solid #e5e7eb',
+            width: '100%',
+            height: '100%'
+          }}>
+            <EmbedEditor 
+              data={{
+                title: 'Embed',
+                url: '',
+                description: 'Add your embed content here...'
+              }}
+              onChange={() => {}} // No-op for preview
+            />
           </div>
         )
       default:

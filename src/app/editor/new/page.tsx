@@ -1325,7 +1325,6 @@ export default function EditorPage() {
                       {block.type === 'quiz' && (
                         <div className="mini-preview">
                           <div className="mini-preview-content">
-                            <div className="mini-preview-icon">❓</div>
                             <div className="mini-preview-title">{block.data.startTitle || 'Test your knowledge'}</div>
                             <div className="mini-preview-description">{block.data.startContent || 'Interactive questions'}</div>
                             <div className="mini-preview-question-count">
@@ -1366,9 +1365,23 @@ export default function EditorPage() {
                     {block.type === 'video' && (
                       <div className="mini-preview">
                         <div className="mini-preview-content">
-                          <div className="mini-preview-icon">🎥</div>
-                          <div className="mini-preview-title">Video Content</div>
-                          <div className="mini-preview-description">Embedded video player</div>
+                          <div className="mini-preview-title">{block.data.title || 'Untitled'}</div>
+                          <div className="mini-preview-description">{block.data.description || 'Add a description for your video...'}</div>
+                          <div className="mini-preview-video-container">
+                            {block.data.videoUrl ? (
+                              <video 
+                                src={block.data.videoUrl}
+                                className="mini-preview-video"
+                                muted
+                                preload="metadata"
+                              />
+                            ) : (
+                              <div className="mini-preview-video-placeholder">
+                                <div className="mini-preview-video-icon">🎥</div>
+                                <span>No video uploaded</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     )}

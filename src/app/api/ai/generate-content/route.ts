@@ -29,11 +29,11 @@ export async function POST(request: NextRequest) {
         case 'text-image':
           return 400  // 100-150 words for paragraph-based slide content
         case 'flashcards':
-          return 800  // Multiple Q&A pairs
+          return 2000  // Multiple Q&A pairs - increased for completeness
         case 'accordion':
-          return 600  // Multiple expandable sections
+          return 1000  // Multiple expandable sections
         case 'checklist':
-          return 400  // Multiple checklist items
+          return 600  // Multiple checklist items
         default:
           return 500
       }
@@ -64,9 +64,42 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Parse the JSON response
+    // Check if response was cut off
+    const finishReason = completion.choices[0]?.finish_reason
+    if (finishReason === 'length') {
+      console.warn('AI response was cut off due to token limit')
+    }
+
+    // Parse the JSON response with better error handling
     try {
-      const parsedContent = JSON.parse(generatedContent)
+      // Try to fix incomplete JSON (common issue when response is cut off)
+      let jsonContent = generatedContent.trim()
+      
+      // If JSON appears incomplete, try to close it
+      if (!jsonContent.endsWith('}')) {
+        // Count open braces
+        const openBraces = (jsonContent.match(/\{/g) || []).length
+        const closeBraces = (jsonContent.match(/\}/g) || []).length
+        const missingBraces = openBraces - closeBraces
+        
+        // If we're inside an array, try to close it
+        if (jsonContent.includes('[') && !jsonContent.includes(']')) {
+          const openBrackets = (jsonContent.match(/\[/g) || []).length
+          const closeBrackets = (jsonContent.match(/\]/g) || []).length
+          const missingBrackets = openBrackets - closeBrackets
+          
+          for (let i = 0; i < missingBrackets; i++) {
+            jsonContent += ']'
+          }
+        }
+        
+        // Try to close the JSON object
+        for (let i = 0; i < missingBraces; i++) {
+          jsonContent += '}'
+        }
+      }
+      
+      const parsedContent = JSON.parse(jsonContent)
       
       // Validate and structure the content based on type
       const structuredContent = validateAndStructureContent(parsedContent, contentType)
@@ -74,8 +107,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(structuredContent)
     } catch (parseError) {
       console.error('Error parsing AI response:', parseError)
+      console.error('Generated content:', generatedContent.substring(0, 500))
+      console.error('Finish reason:', finishReason)
+      
       return NextResponse.json(
-        { error: 'Invalid JSON response from AI' },
+        { 
+          error: 'Invalid JSON response from AI',
+          details: finishReason === 'length' 
+            ? 'Response was cut off due to token limit. Please try generating fewer flashcards or increase the limit.'
+            : 'The AI response could not be parsed as valid JSON.'
+        },
         { status: 500 }
       )
     }

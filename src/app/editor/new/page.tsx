@@ -21,8 +21,11 @@ import {
   ChevronDown,
     Clock,
     Droplets,
-    MoreHorizontal
+    MoreHorizontal,
+    Sparkles,
+    Loader2
     } from 'lucide-react'
+  import { LuPencil } from "react-icons/lu"
   import Link from 'next/link'
   import AlignmentDropdown from '@/components/AlignmentDropdown'
   import TextImageEditor from '@/components/Editor/TextImageEditor'
@@ -95,6 +98,42 @@ export default function EditorPage() {
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [dragOverItem, setDragOverItem] = useState<string | null>(null)
   const alignmentButtonRef = useRef<HTMLButtonElement>(null)
+  
+  // AI-related state
+  const [showAIModal, setShowAIModal] = useState(false)
+  const [selectedBlockType, setSelectedBlockType] = useState<string | null>(null)
+  const [aiPrompt, setAiPrompt] = useState('')
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false)
+  const [flashcardCount, setFlashcardCount] = useState(5)
+  const [referenceSlides, setReferenceSlides] = useState('')
+  
+  // Selection flow state
+  const [showSelectionDiv, setShowSelectionDiv] = useState(false)
+  const [clickedBlockType, setClickedBlockType] = useState<string | null>(null)
+  const [clickedBlockPosition, setClickedBlockPosition] = useState<{ x: number; y: number } | null>(null)
+
+  // Handle clicks outside selection div
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showSelectionDiv) {
+        const target = event.target as Element
+        // Don't close if clicking inside the selection div
+        if (!target.closest('.selection-div')) {
+          setShowSelectionDiv(false)
+          setClickedBlockType(null)
+          setClickedBlockPosition(null)
+        }
+      }
+    }
+
+    if (showSelectionDiv) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showSelectionDiv])
 
   const addContentBlock = (type: string) => {
     const newBlock: ContentBlock = {
@@ -118,6 +157,250 @@ export default function EditorPage() {
     }
     
     setActiveBlock(newBlock.id)
+  }
+
+  const addContentBlockWithAI = (type: string) => {
+    setSelectedBlockType(type)
+    setAiPrompt('')
+    setShowAIModal(true)
+  }
+
+  const handleContentTypeClick = (type: string, event: React.MouseEvent) => {
+    // Types that are always created from scratch (no AI option)
+    const scratchOnlyTypes = ['quiz', 'video', 'document', 'hotspot', 'embed']
+
+    if (scratchOnlyTypes.includes(type)) {
+      // Directly create the block and close menus; do not show selection div
+      addContentBlock(type)
+      setShowAddMenu(false)
+      setShowSelectionDiv(false)
+      setClickedBlockType(null)
+      setClickedBlockPosition(null)
+      return
+    }
+
+    // For AI-capable types, open the selection div next to the clicked item
+    const rect = event.currentTarget.getBoundingClientRect()
+    setClickedBlockType(type)
+    setClickedBlockPosition({
+      x: rect.right + 10,
+      y: rect.top
+    })
+    setShowSelectionDiv(true)
+  }
+
+  const handleFromScratch = () => {
+    if (clickedBlockType) {
+      addContentBlock(clickedBlockType)
+      setShowAddMenu(false)
+    }
+    setShowSelectionDiv(false)
+    setClickedBlockType(null)
+    setClickedBlockPosition(null)
+  }
+
+  const handleWithAI = () => {
+    // Close selection div first
+    setShowSelectionDiv(false)
+    setClickedBlockPosition(null)
+    
+    if (clickedBlockType) {
+      const blockType = clickedBlockType
+      // Clear clicked block type
+      setClickedBlockType(null)
+      // Then open AI modal with the block type
+      setSelectedBlockType(blockType)
+      setAiPrompt('')
+      setShowAIModal(true)
+    } else {
+      setClickedBlockType(null)
+    }
+  }
+
+  const getSystemPrompt = (type: string) => {
+    const prompts: { [key: string]: string } = {
+      'text-image': `You are an educational content creator. Generate concise, slide-friendly content.
+
+Structure your response as JSON with this exact format:
+{
+  "title": "Content title (max 8 words)",
+  "content": "Plain text content with NO HTML tags - just simple line breaks with \\n",
+  "layout": "left|right|top",
+  "altText": "Description for accessibility"
+}
+
+CRITICAL GUIDELINES:
+- Maximum 100-150 words total for content
+- Use plain text ONLY - NO HTML tags, NO markdown, NO formatting, NO bullet points
+- Use \\n for line breaks between paragraphs
+- Write in paragraph form - create 2-3 well-structured paragraphs
+- Each paragraph should be 2-4 sentences with clear explanations
+- Include relevant context and brief explanations
+- Content should be informative yet concise for a slide with an image
+- Focus on clear, flowing paragraphs rather than bullet points or lists
+
+Example format (in JSON):
+{
+  "title": "AI in Healthcare",
+  "content": "AI is transforming healthcare delivery through advanced diagnostic capabilities and predictive analytics. Medical professionals now use AI tools to analyze medical images with remarkable accuracy, enabling earlier disease detection and more precise diagnoses.\\n\\nPredictive analytics in healthcare leverage vast amounts of patient data to forecast outcomes and potential complications. These systems help healthcare providers identify at-risk patients and implement preventive measures, ultimately improving patient care and reducing hospital readmissions.\\n\\nPersonalized medicine represents another significant advancement, where AI analyzes genetic information and treatment responses to tailor individual treatment plans. This precision medicine approach enhances treatment efficacy and minimizes adverse effects.",
+  "layout": "right",
+  "altText": "AI healthcare applications"
+}`,
+
+      'flashcards': `You are an educational content creator. Generate flashcard content for e-learning courses.
+
+Structure your response as JSON with this exact format:
+{
+  "title": "Flashcard set title",
+  "description": "Brief description of the flashcard set",
+  "cards": [
+    {
+      "id": "1",
+      "frontTitle": "Question or term",
+      "frontDescription": "Additional context for the front",
+      "back": "Answer or definition"
+    }
+  ]
+}
+
+Guidelines:
+- Create educational flashcards with clear questions and answers based on the user's topic
+- Use concise, memorable content
+- Include relevant examples
+- Make content suitable for spaced repetition learning
+- Ensure answers are accurate and helpful
+- Generate the exact number of flashcards requested by the user`,
+
+      'accordion': `You are an educational content creator. Generate accordion content for e-learning courses.
+
+Structure your response as JSON with this exact format:
+{
+  "title": "Accordion section title",
+  "description": "Brief description of the content",
+  "items": [
+    {
+      "id": "1",
+      "title": "Section title",
+      "description": "Detailed content for this section",
+      "isExpanded": false
+    }
+  ]
+}
+
+Guidelines:
+- Create educational content organized in expandable sections based on the user's topic
+- Use clear, descriptive titles
+- Provide comprehensive information in descriptions
+- Make content suitable for progressive disclosure
+- Ensure logical organization and flow
+- Generate content based on the user's topic`,
+
+      'checklist': `You are an educational content creator. Generate checklist content for e-learning courses.
+
+Structure your response as JSON with this exact format:
+{
+  "title": "Checklist title",
+  "items": [
+    {
+      "id": "1",
+      "text": "Checklist item text",
+      "checked": false,
+      "parentId": null,
+      "children": []
+    }
+  ]
+}
+
+Guidelines:
+- Create actionable checklist items based on the user's topic and reference slides
+- Use clear, specific language
+- Make items measurable and achievable
+- Organize logically with parent-child relationships if needed
+- Ensure items are relevant to the learning objectives
+- Generate content based on the user's topic and reference materials`
+    }
+    return prompts[type] || ''
+  }
+
+  const generateAIContent = async () => {
+    if (!selectedBlockType || !aiPrompt.trim()) return
+
+    setIsGeneratingAI(true)
+    try {
+      const systemPrompt = getSystemPrompt(selectedBlockType)
+      
+      // Create enhanced user prompt based on content type
+      let enhancedPrompt = aiPrompt
+      if (selectedBlockType === 'flashcards') {
+        enhancedPrompt = `Create ${flashcardCount} flashcards about: ${aiPrompt}`
+        if (referenceSlides.trim()) {
+          enhancedPrompt += `\n\nReference slides: ${referenceSlides}`
+        }
+      } else if (selectedBlockType === 'checklist') {
+        enhancedPrompt = `Create checklist items for: ${aiPrompt}`
+        if (referenceSlides.trim()) {
+          enhancedPrompt += `\n\nReference slides: ${referenceSlides}`
+        }
+      } else {
+        enhancedPrompt = `Create content about: ${aiPrompt}`
+      }
+      
+      const response = await fetch('/api/ai/generate-content', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          systemPrompt,
+          userPrompt: enhancedPrompt,
+          contentType: selectedBlockType
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate content')
+      }
+
+      const generatedData = await response.json()
+      
+      // Create new block with AI-generated content
+      const defaultData = getDefaultData(selectedBlockType)
+      const newBlock: ContentBlock = {
+        id: Date.now().toString(),
+        type: selectedBlockType,
+        title: getBlockTitle(selectedBlockType),
+        data: {
+          ...defaultData,
+          ...generatedData,
+          // Ensure image is empty by default for text-image blocks
+          ...(selectedBlockType === 'text-image' && { image: '', layout: 'top' })
+        }
+      }
+      
+      // Find the course-completed block index
+      const courseCompletedIndex = contentBlocks.findIndex(block => block.type === 'course-completed')
+      
+      if (courseCompletedIndex === -1) {
+        setContentBlocks([...contentBlocks, newBlock])
+      } else {
+        const newBlocks = [...contentBlocks]
+        newBlocks.splice(courseCompletedIndex, 0, newBlock)
+        setContentBlocks(newBlocks)
+      }
+      
+      setActiveBlock(newBlock.id)
+      setShowAIModal(false)
+      setAiPrompt('')
+      setSelectedBlockType(null)
+      setFlashcardCount(5)
+      setReferenceSlides('')
+      
+    } catch (error) {
+      console.error('Error generating AI content:', error)
+      alert('Failed to generate content. Please try again.')
+    } finally {
+      setIsGeneratingAI(false)
+    }
   }
 
   const getBlockTitle = (type: string) => {
@@ -158,6 +441,13 @@ export default function EditorPage() {
         ]
       },
       text: { title: 'Content', text: '', image: '' },
+      'text-image': { 
+        title: 'Content', 
+        content: '', 
+        image: '', 
+        layout: 'top', 
+        altText: '' 
+      },
       video: { title: 'Video', url: '', description: '' },
       document: { title: 'Document', url: '', description: '' },
       flashcard: { title: 'Flashcards', cards: [] },
@@ -1375,22 +1665,19 @@ export default function EditorPage() {
               </h4>
               <div className="block-type-grid">
                 {[
-                  { type: 'quiz', label: 'Quiz', icon: HelpCircle, color: '#059669' },
-                  { type: 'text-image', label: 'Text & Image', icon: Image, color: '#dc2626' },
-                  { type: 'video', label: 'Video', icon: Video, color: '#7c3aed' },
-                  { type: 'document', label: 'Document', icon: FileText, color: '#ea580c' },
-                  { type: 'flashcards', label: 'Flashcards', icon: BookOpen, color: '#0891b2' },
-                  { type: 'hotspot', label: 'Hotspot Image', icon: Target, color: '#be185d' },
-                  { type: 'accordion', label: 'Accordion', icon: ChevronDown, color: '#65a30d' },
-                  { type: 'checklist', label: 'Checklist', icon: CheckSquare, color: '#ca8a04' },
-                  { type: 'embed', label: 'Embed', icon: Plus, color: '#059669' }
+                  { type: 'quiz', label: 'Quiz', icon: HelpCircle, color: '#059669', hasAI: false },
+                  { type: 'text-image', label: 'Text & Image', icon: Image, color: '#dc2626', hasAI: true },
+                  { type: 'video', label: 'Video', icon: Video, color: '#7c3aed', hasAI: false },
+                  { type: 'document', label: 'Document', icon: FileText, color: '#ea580c', hasAI: false },
+                  { type: 'flashcards', label: 'Flashcards', icon: BookOpen, color: '#0891b2', hasAI: true },
+                  { type: 'hotspot', label: 'Hotspot Image', icon: Target, color: '#be185d', hasAI: false },
+                  { type: 'accordion', label: 'Accordion', icon: ChevronDown, color: '#65a30d', hasAI: true },
+                  { type: 'checklist', label: 'Checklist', icon: CheckSquare, color: '#ca8a04', hasAI: true },
+                  { type: 'embed', label: 'Embed', icon: Plus, color: '#059669', hasAI: false }
                 ].map((contentType) => (
                   <button
                     key={contentType.type}
-                    onClick={() => {
-                      addContentBlock(contentType.type)
-                      setShowAddMenu(false)
-                    }}
+                    onClick={(e) => handleContentTypeClick(contentType.type, e)}
                     onMouseEnter={() => setHoveredType(contentType.type)}
                     onMouseLeave={() => setHoveredType(null)}
                     className="block-type-item"
@@ -1406,6 +1693,56 @@ export default function EditorPage() {
                     </span>
                   </button>
                 ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Selection Div */}
+          {showSelectionDiv && clickedBlockPosition && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="selection-div"
+              style={{
+                left: clickedBlockPosition.x,
+                top: clickedBlockPosition.y
+              }}
+            >
+              <div className="selection-div-options">
+                <button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    handleFromScratch()
+                  }}
+                  className="selection-option"
+                >
+                  <div className="selection-option-icon">
+                    <LuPencil size={16} />
+                  </div>
+                  <div className="selection-option-content">
+                    <div className="selection-option-title">Start from scratch</div>
+                  </div>
+                </button>
+                
+                {clickedBlockType && ['text-image', 'flashcards', 'accordion', 'checklist'].includes(clickedBlockType) && (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleWithAI()
+                    }}
+                    className="selection-option ai"
+                  >
+                    <div className="selection-option-icon">
+                      <LuPencil size={16} />
+                    </div>
+                    <div className="selection-option-content">
+                      <div className="selection-option-title">Generate screen</div>
+                    </div>
+                  </button>
+                )}
               </div>
             </motion.div>
           )}
@@ -1998,55 +2335,122 @@ export default function EditorPage() {
               </button>
             </div>
           )}
-          
-          {/* Right Sidebar - Only for text-image blocks */}
-          {activeBlock && contentBlocks.find(b => b.id === activeBlock)?.type === 'text-image' && (
-            <div className="right-sidebar">
-              <div className="sidebar-content">
-                <div className="visibility-card">
-                  <div className="visibility-header">
-                    <h4>Display Options</h4>
-                  </div>
-                  
-                  <div className="visibility-options">
-                    <div className="visibility-option">
-                      <span className="visibility-text">Title</span>
-                      <label className="visibility-checkbox">
-                        <input
-                          type="checkbox"
-                          checked={true}
-                          onChange={() => {}}
-                        />
-                        <span className="visibility-checkmark"></span>
-                      </label>
-                    </div>
-                    <div className="visibility-option">
-                      <span className="visibility-text">Description</span>
-                      <label className="visibility-checkbox">
-                        <input
-                          type="checkbox"
-                          checked={true}
-                          onChange={() => {}}
-                        />
-                        <span className="visibility-checkmark"></span>
-                      </label>
-                    </div>
-                  </div>
-                  
-                  <div className="sidebar-icons">
-                    <button className="sidebar-icon" title="Preview">
-                      <Eye size={20} />
+        </div>
+      </div>
+
+      {/* AI Content Generation Modal */}
+      {showAIModal && (
+        <div className="ai-modal-overlay" onClick={() => {
+          if (!isGeneratingAI) {
+            setShowAIModal(false)
+            setAiPrompt('')
+            setSelectedBlockType(null)
+            setFlashcardCount(5)
+            setReferenceSlides('')
+          }
+        }}>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="ai-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="ai-modal-header">
+              <div className="ai-modal-header-left">
+                <div className="ai-modal-icon-container">
+                  <LuPencil size={20} className="ai-modal-icon" />
+                  <span className="ai-modal-icon-sparkle" style={{ top: '-2px', right: '-2px' }}>✨</span>
+                  <span className="ai-modal-icon-sparkle" style={{ bottom: '-2px', left: '-2px' }}>✨</span>
+                </div>
+                <h3 className="ai-modal-title">Generate screen</h3>
+              </div>
+              <button
+                className="ai-modal-close"
+                onClick={() => {
+                  if (!isGeneratingAI) {
+                    setShowAIModal(false)
+                    setAiPrompt('')
+                    setSelectedBlockType(null)
+                    setFlashcardCount(5)
+                    setReferenceSlides('')
+                  }
+                }}
+                disabled={isGeneratingAI}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="ai-modal-content">
+              {/* Description Section */}
+              <div className="ai-modal-section">
+                <label className="ai-modal-label">Description</label>
+                <textarea
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  placeholder="Describe your screen's content and purpose, or leave this field blank to use reference screens only."
+                  className="ai-modal-textarea"
+                />
+              </div>
+
+              {/* Flashcard Count Section */}
+              {selectedBlockType === 'flashcards' && (
+                <div className="ai-modal-section">
+                  <label className="ai-modal-label">Number of flashcards</label>
+                  <div className="ai-modal-counter">
+                    <button
+                      className="ai-modal-counter-button"
+                      onClick={() => setFlashcardCount(Math.max(1, flashcardCount - 1))}
+                      type="button"
+                    >
+                      −
                     </button>
-                    <button className="sidebar-icon" title="Color">
-                      <Droplets size={20} />
+                    <span className="ai-modal-counter-value">{flashcardCount}</span>
+                    <button
+                      className="ai-modal-counter-button"
+                      onClick={() => setFlashcardCount(Math.min(20, flashcardCount + 1))}
+                      type="button"
+                    >
+                      +
                     </button>
                   </div>
                 </div>
-              </div>
+              )}
+
+              {/* Reference Screens Section */}
+              {(selectedBlockType === 'flashcards' || selectedBlockType === 'checklist') && (
+                <div className="ai-modal-section">
+                  <label className="ai-modal-label">Choose reference screens</label>
+                  <p className="ai-modal-sublabel">Select existing screens you want to use as a reference.</p>
+                  <div className="ai-modal-select">
+                    <svg className="ai-modal-select-icon" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                      <path d="M4 4H16V16H4V4Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M7 8H13M7 12H13M7 4V16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <span className="ai-modal-select-text">None</span>
+                    <svg className="ai-modal-select-chevron" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                      <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+
+            {/* Modal Footer */}
+            <div className="ai-modal-footer">
+              <button
+                onClick={generateAIContent}
+                disabled={isGeneratingAI}
+                className="ai-modal-button generate"
+              >
+                {isGeneratingAI ? 'Generating...' : 'Generate'}
+              </button>
+            </div>
+          </motion.div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

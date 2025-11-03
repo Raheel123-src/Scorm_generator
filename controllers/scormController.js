@@ -6,6 +6,30 @@ const axios = require('axios');
 const FormData = require('form-data');
 const videoService = require('../services/videoService');
 const documentService = require('../services/documentService');
+const pdfExtraction = require('pdf-extraction');
+const mammoth = require('mammoth');
+const multer = require('multer');
+const os = require('os');
+
+// Configure multer for file uploads
+const upload = multer({
+  dest: os.tmpdir(),
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 50MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only PDF and DOC/DOCX files are allowed.'));
+    }
+  }
+});
 
 // Function to fetch text content from S3 URL
 async function fetchTextContent(s3Url) {
@@ -293,19 +317,19 @@ Make it feel like a friendly tutor is personally guiding the learner through the
       const fallbackScript = basePrompt;
       
       console.log(`🔊 Generating TTS audio for slide ${slideIndex + 1} (using fallback prompt)...`);
-      
-      const response = await axios.post('https://api.openai.com/v1/audio/speech', {
-        model: 'tts-1',
+
+    const response = await axios.post('https://api.openai.com/v1/audio/speech', {
+      model: 'tts-1',
         input: fallbackScript,
-        voice: 'nova', // Available voices: alloy, echo, fable, onyx, nova, shimmer
-        response_format: 'mp3'
-      }, {
-        headers: {
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        responseType: 'arraybuffer'
-      });
+      voice: 'nova', // Available voices: alloy, echo, fable, onyx, nova, shimmer
+      response_format: 'mp3'
+    }, {
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      responseType: 'arraybuffer'
+    });
 
       console.log(`✅ TTS audio generated successfully for slide ${slideIndex + 1} (fallback)`);
       return response.data;
@@ -702,7 +726,7 @@ const generateSCORM = async (req, res) => {
       // Delay cleanup to ensure file is fully sent
       setTimeout(() => {
         try {
-          fs.rmSync(tempDir, { recursive: true, force: true });
+      fs.rmSync(tempDir, { recursive: true, force: true });
         } catch (err) {
           console.error('Error cleaning up tempDir:', err);
         }
@@ -1815,7 +1839,7 @@ function generateTextImageContent(block) {
         <div class="text-content">
           <h1 class="text-title">${block.data.title || 'Untitled'}</h1>
           <div class="text-body">${block.data.content || ''}</div>
-        </div>
+      </div>
       </div>
       ${layout !== 'none' && layout !== 'behind' ? `<div class="image-section"><div class="image-container">${imageHtml}</div></div>` : ''}
     </div>
@@ -2831,6 +2855,552 @@ window.API_1484_11 = API_1484_11;
 `;
 }
 
+// Extract text from uploaded document
+async function extractTextFromDocument(filePath, mimeType) {
+  try {
+    if (mimeType === 'application/pdf') {
+      // Use pdf-extraction for PDF parsing (Node.js compatible)
+      const result = await pdfExtraction(filePath);
+      return result.text || '';
+    } else if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || 
+               mimeType === 'application/msword') {
+      const result = await mammoth.extractRawText({ path: filePath });
+      return result.value;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error extracting text from document:', error);
+    throw error;
+  }
+}
+
+// Generate SCORM content from document using AI
+async function generateSCORMFromDocument(documentText, courseTitle) {
+  try {
+    console.log('🤖 Generating SCORM structure from document using AI...');
+    
+    const prompt = `You are an expert SCORM course designer. Analyze the following document content and generate a comprehensive SCORM course structure in JSON format.
+
+Document Content:
+${documentText.substring(0, 15000)}${documentText.length > 15000 ? '...[truncated]' : ''}
+
+Course Title: ${courseTitle}
+
+REQUIREMENTS:
+1. Generate content blocks in the following format (return ONLY valid JSON, no markdown):
+   {
+     "content": [
+       {
+         "id": "block_1",
+         "type": "welcome",
+         "title": "Welcome Page",
+         "data": { ... }
+       },
+       {
+         "id": "block_2",
+         "type": "text-image" | "accordion" | "checklist" | "flashcards" | "document" | "embed",
+         "title": "Descriptive Slide Title",  // REQUIRED: Every block MUST have a unique, descriptive title
+         "data": { ... }
+       },
+       ...
+       {
+         "id": "block_N-1",
+         "type": "quiz",
+         "title": "Quiz",
+         "data": { ... }
+       },
+       {
+         "id": "block_N",
+         "type": "course-completed",
+         "title": "Course Completed",
+         "data": { ... }
+       }
+     ]
+   }
+
+CRITICAL: Every single block MUST have a "title" field at the block level (not just inside data). Generate descriptive, unique titles for each block based on its content. Examples:
+- "Introduction to Topic Name"
+- "Understanding Key Concepts"  
+- "Practical Examples and Applications"
+- "Summary and Review"
+- "Assessment Quiz"
+Make titles specific to the content, not generic like "Slide 1" or "Content Block".
+
+2. CONTENT TYPE RULES:
+   - Always start with a "welcome" block
+   - Always end with a "course-completed" block
+   - The SECOND-TO-LAST block MUST be a "quiz" type
+   - Use "text-image" for slides with text and images
+   - Use "accordion" for expandable content sections
+   - Use "checklist" for step-by-step instructions
+   - Use "flashcards" for key concepts and definitions
+   - Use "embed" for external resources if needed
+
+3. CONTENT LIMITS PER SLIDE:
+   - Text: Maximum 500 words per slide
+   - Break large sections into multiple slides
+   - Each slide should focus on one main topic
+
+4. QUIZ REQUIREMENTS:
+   - Must have at least 5 questions
+   - Use VARIETY in question types! Mix different types:
+     * "mcq" - Multiple choice (4 options, correctAnswer is index 0-3)
+     * "multiple" - Multiple response (4+ options, correctAnswer is array of indices like [0, 2])
+     * "true-false" - True/False (2 options, correctAnswer is boolean: true or false)
+     * "fill-blank" - Fill in the blank (sentenceParts structure)
+     * "short-answer" - Short answer (correctAnswer is array of strings)
+   - Each question must have: "id" (string), "type" (string from above), "question" (string), "options" (array of strings), "correctAnswer" (varies by type), "explanation" (optional string)
+   - For "fill-blank": Use "sentenceParts" array with structure [{ "type": "text" | "blank", "text": string, "options": string[] }]
+   - Questions should test understanding of key concepts from the document
+   - IMPORTANT: Mix at least 2-3 different question types, don't use only "mcq"
+
+5. DATA STRUCTURE FOR EACH TYPE:
+   - welcome: { "title": string, "description": string, "duration": number }
+   - text-image: { "title": string, "body": string, "imageUrl": string (optional) }
+   - accordion: { "title": string (REQUIRED - block-level title), "description": string (REQUIRED - block-level description), "items": [{ "title": string, "content": string }] }
+   - checklist: { "title": string (REQUIRED - block-level title), "items": [{ "text": string, "checked": boolean }] }
+   - flashcards: { "title": string (REQUIRED - block-level title), "description": string (REQUIRED - block-level description), "cards": [{ "front": string, "back": string }] }
+   - video: { "title": string (REQUIRED - block-level title), "description": string (REQUIRED - block-level description), "videoUrl": string, "enforceCompletion": boolean }
+   - document: { "title": string (REQUIRED - block-level title), "description": string (REQUIRED - block-level description), "documentUrl": string, "enforceCompletion": boolean }
+   - embed: { "title": string (REQUIRED - block-level title), "description": string (REQUIRED - block-level description), "url": string }
+   - hotspot: { "title": string (REQUIRED - block-level title), "imageUrl": string, "altText": string, "hotspots": [] }
+   - quiz: { 
+       "startTitle": "Test your knowledge",
+       "startContent": "Add your content here...",
+       "finishTitle": "Congratulations! 😊",
+       "finishMessage": "You have completed the quiz",
+       "questions": [
+         {
+           "id": "question_1",
+           "type": "mcq" | "multiple" | "true-false" | "fill-blank" | "short-answer",
+           "question": string,
+           "options": [string, ...] (required for mcq, multiple, true-false),
+           "correctAnswer": number (for mcq) | [number, ...] (for multiple) | boolean (for true-false) | [] (for fill-blank) | [string, ...] (for short-answer),
+           "sentenceParts": [{ "type": "text" | "blank", "text": string, "options": string[] }] (for fill-blank only),
+           "explanation": string (optional)
+         }
+       ]
+     }
+   - course-completed: { "title": string, "subtitle": string, "selectedEmoji": "happy", "ctaText": string }
+
+6. Organize content logically:
+   - Introduction/Welcome
+   - Main content (break into digestible slides)
+   - Key concepts (use flashcards if helpful)
+   - Summary/Review
+   - Quiz (assess learning)
+   - Completion
+
+Generate a comprehensive course with at least 8-12 content blocks (not counting welcome and course-completed).`;
+
+    const response = await axios.post('https://api.openai.com/v1/chat/completions', {
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert SCORM course designer. Generate structured course content in JSON format only. Always return valid JSON that can be parsed.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 4000
+    }, {
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const content = response.data.choices[0]?.message?.content?.trim();
+    
+    if (!content) {
+      throw new Error('AI did not return content');
+    }
+
+    // Extract JSON from response (handle markdown code blocks)
+    let jsonContent = content;
+    if (jsonContent.startsWith('```')) {
+      jsonContent = jsonContent.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+    }
+
+    const parsed = JSON.parse(jsonContent);
+    
+    // Ensure proper structure
+    if (!parsed.content || !Array.isArray(parsed.content)) {
+      throw new Error('Invalid structure returned from AI');
+    }
+
+    // Ensure quiz is second-to-last and course-completed is last
+    const contentBlocks = parsed.content;
+    const lastBlock = contentBlocks[contentBlocks.length - 1];
+    const secondLastBlock = contentBlocks[contentBlocks.length - 2];
+
+    // Ensure course-completed is last
+    if (lastBlock.type !== 'course-completed') {
+      // Remove existing course-completed if present
+      const filtered = contentBlocks.filter(block => block.type !== 'course-completed');
+      filtered.push({
+        id: `block_${Date.now()}_completed`,
+        type: 'course-completed',
+        title: 'Course Completed',
+        data: {
+          title: "You're all done!",
+          subtitle: "How was your course experience?",
+          selectedEmoji: 'happy',
+          ctaText: "Create your own course",
+          layout: 'image-behind',
+          confetti: 'celebration'
+        }
+      });
+      parsed.content = filtered;
+    }
+
+    // Ensure quiz is second-to-last
+    if (secondLastBlock && secondLastBlock.type !== 'quiz') {
+      const filtered = parsed.content.filter(block => block.type !== 'quiz');
+      // Add quiz before last block (course-completed)
+      const lastIndex = filtered.length - 1;
+      filtered.splice(lastIndex, 0, {
+        id: `block_${Date.now()}_quiz`,
+        type: 'quiz',
+        title: 'Quiz',
+        data: {
+          startTitle: 'Test your knowledge',
+          startContent: 'Add your content here...',
+          finishTitle: 'Congratulations! 😊',
+          finishMessage: 'You have completed the quiz',
+          questions: [
+            {
+              id: `question_${Date.now()}_0`,
+              type: 'mcq',
+              question: 'What is the main topic of this course?',
+              options: ['Option A', 'Option B', 'Option C', 'Option D'],
+              correctAnswer: 0,
+              explanation: ''
+            }
+          ]
+        }
+      });
+      parsed.content = filtered;
+    }
+
+    // Ensure every block has a title and transform to correct format
+    parsed.content = parsed.content.map((block, index) => {
+      // Ensure every block has a title at the block level
+      if (!block.title || block.title.trim() === '') {
+        // Generate title based on content or type
+        let generatedTitle = '';
+        
+        if (block.data && block.data.title) {
+          // Use title from data if available
+          generatedTitle = block.data.title;
+        } else {
+          // Generate based on type and content
+          switch (block.type) {
+            case 'text-image':
+              generatedTitle = block.data?.body ? 
+                block.data.body.substring(0, 60).replace(/\n/g, ' ').trim().replace(/\.+$/, '') || `Content Slide ${index + 1}` :
+                `Content Slide ${index + 1}`;
+              break;
+            case 'accordion':
+              generatedTitle = block.data?.title || block.data?.items?.[0]?.title || `Accordion Section ${index + 1}`;
+              // Ensure data.title and data.description exist
+              if (!block.data.title && generatedTitle) {
+                block.data = { ...block.data, title: generatedTitle };
+              }
+              if (!block.data.description) {
+                block.data = { ...block.data, description: '' };
+              }
+              break;
+            case 'checklist':
+              generatedTitle = block.data?.title || block.data?.items?.[0]?.text ? 
+                (block.data.items[0].text.substring(0, 60) + (block.data.items[0].text.length > 60 ? '...' : '')) :
+                `Checklist ${index + 1}`;
+              // Ensure data.title exists
+              if (!block.data.title && generatedTitle) {
+                block.data = { ...block.data, title: generatedTitle };
+              }
+              break;
+            case 'flashcards':
+              generatedTitle = block.data?.title || block.data?.cards?.[0]?.front ? 
+                (block.data.cards[0].front.substring(0, 60) + (block.data.cards[0].front.length > 60 ? '...' : '')) :
+                `Flashcards ${index + 1}`;
+              // Ensure data.title and data.description exist
+              if (!block.data.title && generatedTitle) {
+                block.data = { ...block.data, title: generatedTitle };
+              }
+              if (!block.data.description) {
+                block.data = { ...block.data, description: '' };
+              }
+              break;
+            case 'video':
+              generatedTitle = block.data?.title || block.data?.description?.substring(0, 60) || `Video Content ${index + 1}`;
+              // Ensure data.title and data.description exist
+              if (!block.data.title && generatedTitle) {
+                block.data = { ...block.data, title: generatedTitle };
+              }
+              if (!block.data.description) {
+                block.data = { ...block.data, description: '' };
+              }
+              break;
+            case 'document':
+              generatedTitle = block.data?.title || block.data?.description?.substring(0, 60) || `Document ${index + 1}`;
+              // Ensure data.title and data.description exist
+              if (!block.data.title && generatedTitle) {
+                block.data = { ...block.data, title: generatedTitle };
+              }
+              if (!block.data.description) {
+                block.data = { ...block.data, description: '' };
+              }
+              break;
+            case 'embed':
+              generatedTitle = block.data?.title || block.data?.description?.substring(0, 60) || `Embedded Content ${index + 1}`;
+              // Ensure data.title and data.description exist
+              if (!block.data.title && generatedTitle) {
+                block.data = { ...block.data, title: generatedTitle };
+              }
+              if (!block.data.description) {
+                block.data = { ...block.data, description: '' };
+              }
+              break;
+            case 'welcome':
+              generatedTitle = 'Welcome Page';
+              break;
+            case 'quiz':
+              generatedTitle = 'Quiz';
+              break;
+            case 'course-completed':
+              generatedTitle = 'Course Completed';
+              break;
+            default:
+              generatedTitle = `${block.type.charAt(0).toUpperCase() + block.type.slice(1).replace('-', ' ')} ${index + 1}`;
+          }
+        }
+        
+        block.title = generatedTitle;
+      }
+      
+      // Ensure accordion has title and description at block level
+      if (block.type === 'accordion' && block.data) {
+        if (!block.data.title) {
+          block.data.title = block.title || 'Untitled';
+        }
+        if (!block.data.description) {
+          block.data.description = '';
+        }
+      }
+      
+      // Ensure accordion items have IDs
+      if (block.type === 'accordion' && block.data && block.data.items && Array.isArray(block.data.items)) {
+        block.data.items = block.data.items.map((item, itemIndex) => ({
+          id: item.id || `accordion_item_${Date.now()}_${itemIndex}`,
+          title: item.title || '',
+          description: item.description || item.content || '',
+          content: item.content || item.description || '',
+          isExpanded: item.isExpanded || false
+        }));
+      }
+      
+      // Ensure checklist has title at block level
+      if (block.type === 'checklist' && block.data) {
+        if (!block.data.title) {
+          block.data.title = block.title || 'Untitled';
+        }
+      }
+      
+      // Ensure checklist items have IDs
+      if (block.type === 'checklist' && block.data && block.data.items && Array.isArray(block.data.items)) {
+        const addIdsToItems = (items, parentId) => {
+          return items.map((item, itemIndex) => ({
+            id: item.id || `checklist_item_${Date.now()}_${itemIndex}`,
+            text: item.text || '',
+            checked: item.checked !== undefined ? item.checked : true,
+            children: item.children && Array.isArray(item.children) ? addIdsToItems(item.children, item.id) : undefined
+          }));
+        };
+        block.data.items = addIdsToItems(block.data.items);
+      }
+      
+      // Ensure flashcards have title and description at block level
+      if (block.type === 'flashcards' && block.data) {
+        if (!block.data.title) {
+          block.data.title = block.title || 'Untitled';
+        }
+        if (!block.data.description) {
+          block.data.description = '';
+        }
+      }
+      
+      // Ensure flashcard items have IDs
+      if (block.type === 'flashcards' && block.data && block.data.cards && Array.isArray(block.data.cards)) {
+        block.data.cards = block.data.cards.map((card, cardIndex) => ({
+          id: card.id || `flashcard_${Date.now()}_${cardIndex}`,
+          front: card.front || card.frontTitle || '',
+          frontTitle: card.frontTitle || card.front || '',
+          frontDescription: card.frontDescription || '',
+          back: card.back || '',
+          image: card.image || ''
+        }));
+      }
+      
+      // Ensure video, document, embed, hotspot have title and description at block level
+      if ((block.type === 'video' || block.type === 'document' || block.type === 'embed' || block.type === 'hotspot') && block.data) {
+        if (!block.data.title) {
+          block.data.title = block.title || 'Untitled';
+        }
+        if ((block.type === 'video' || block.type === 'document' || block.type === 'embed') && !block.data.description) {
+          block.data.description = '';
+        }
+      }
+      
+      // Transform quiz blocks to ensure correct format
+      if (block.type === 'quiz' && block.data && block.data.questions) {
+        // Transform quiz questions to expected format
+        const transformedQuestions = block.data.questions.map((q, qIndex) => {
+          // If options are in old format [{text, isCorrect}], transform them
+          if (q.options && Array.isArray(q.options) && q.options.length > 0 && typeof q.options[0] === 'object' && q.options[0].text) {
+            const optionsArray = q.options.map(opt => opt.text || opt);
+            const correctIndex = q.options.findIndex(opt => opt.isCorrect === true);
+            
+            return {
+              id: q.id || `question_${Date.now()}_${qIndex}`,
+              type: q.type || 'mcq',
+              question: q.question || '',
+              options: optionsArray,
+              correctAnswer: correctIndex >= 0 ? correctIndex : (q.correctAnswer !== undefined ? q.correctAnswer : 0),
+              explanation: q.explanation || '',
+              sentenceParts: q.sentenceParts,
+              matchPairs: q.matchPairs,
+              sequenceItems: q.sequenceItems
+            };
+          }
+          
+          // Ensure required fields are present based on question type
+          const questionType = q.type || 'mcq';
+          let correctAnswer = q.correctAnswer;
+          
+          // Set defaults based on question type
+          if (questionType === 'mcq') {
+            correctAnswer = q.correctAnswer !== undefined ? q.correctAnswer : 0;
+          } else if (questionType === 'multiple') {
+            correctAnswer = Array.isArray(q.correctAnswer) ? q.correctAnswer : (q.correctAnswer !== undefined ? [q.correctAnswer] : [0]);
+          } else if (questionType === 'true-false') {
+            correctAnswer = typeof q.correctAnswer === 'boolean' ? q.correctAnswer : true;
+          } else if (questionType === 'short-answer') {
+            correctAnswer = Array.isArray(q.correctAnswer) ? q.correctAnswer : (q.correctAnswer ? [String(q.correctAnswer)] : ['']);
+          } else if (questionType === 'fill-blank') {
+            correctAnswer = q.correctAnswer || [];
+          }
+          
+          return {
+            id: q.id || `question_${Date.now()}_${qIndex}`,
+            type: questionType,
+            question: q.question || '',
+            options: Array.isArray(q.options) ? q.options : (questionType === 'true-false' ? ['True', 'False'] : []),
+            correctAnswer: correctAnswer,
+            explanation: q.explanation || '',
+            sentenceParts: q.sentenceParts || (questionType === 'fill-blank' ? [
+              { type: 'text', text: 'The capital of France is' },
+              { type: 'blank', options: ['Paris', 'London', 'Berlin'], selectedAnswer: '' }
+            ] : undefined),
+            matchPairs: q.matchPairs,
+            sequenceItems: q.sequenceItems
+          };
+        });
+        
+        // Ensure quiz has required top-level fields
+        block.data = {
+          startTitle: block.data.startTitle || 'Test your knowledge',
+          startContent: block.data.startContent || 'Add your content here...',
+          finishTitle: block.data.finishTitle || 'Congratulations! 😊',
+          finishMessage: block.data.finishMessage || 'You have completed the quiz',
+          questions: transformedQuestions,
+          ...block.data
+        };
+      }
+      
+      return {
+        ...block,
+        order: index + 1
+      };
+    });
+
+    console.log(`✅ Generated ${parsed.content.length} content blocks`);
+    return parsed.content;
+  } catch (error) {
+    console.error('Error generating SCORM from document:', error);
+    throw error;
+  }
+}
+
+// Generate SCORM from document upload
+const generateSCORMFromDoc = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    const { title } = req.body;
+    if (!title || title.trim() === '') {
+      // Clean up uploaded file
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({ message: 'Course title is required' });
+    }
+
+    console.log(`📄 Processing document: ${req.file.originalname}`);
+    console.log(`📝 Course Title: ${title}`);
+
+    // Extract text from document
+    const documentText = await extractTextFromDocument(req.file.path, req.file.mimetype);
+    
+    if (!documentText || documentText.trim() === '') {
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({ message: 'Could not extract text from document. Please ensure the file is not empty or corrupted.' });
+    }
+
+    console.log(`✅ Extracted ${documentText.length} characters from document`);
+
+    // Generate SCORM structure using AI
+    const contentBlocks = await generateSCORMFromDocument(documentText, title);
+
+    // Clean up uploaded file
+    try {
+      fs.unlinkSync(req.file.path);
+    } catch (err) {
+      console.warn('Failed to delete temp file:', err);
+    }
+
+    // Return the generated content in the same format as MongoDB storage
+    res.json({
+      message: 'SCORM structure generated successfully',
+      title: title.trim(),
+      description: 'Generated from uploaded document',
+      content: contentBlocks,
+      contentBlocks: contentBlocks.length
+    });
+
+  } catch (error) {
+    console.error('Generate SCORM from document error:', error);
+    
+    // Clean up uploaded file on error
+    if (req.file && req.file.path) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (err) {
+        console.warn('Failed to delete temp file:', err);
+      }
+    }
+
+    res.status(500).json({ 
+      message: 'Server error while generating SCORM from document',
+      error: error.message 
+    });
+  }
+};
+
 module.exports = {
   getAllSCORMs,
   getSCORM,
@@ -2839,6 +3409,8 @@ module.exports = {
   deleteSCORM,
   publishSCORM,
   generateSCORM,
+  generateSCORMFromDoc,
+  upload, // Export multer middleware
   fetchTextContent,
   generateTTSAudio
 };

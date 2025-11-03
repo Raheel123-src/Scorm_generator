@@ -2956,7 +2956,7 @@ Make titles specific to the content, not generic like "Slide 1" or "Content Bloc
 
 5. DATA STRUCTURE FOR EACH TYPE:
    - welcome: { "title": string, "description": string, "duration": number }
-   - text-image: { "title": string, "body": string, "imageUrl": string (optional) }
+   - text-image: { "title": string, "content": string (REQUIRED - main body text), "image": string (optional image URL), "layout": string ("right" | "left" | "behind" | "none") }
    - accordion: { "title": string (REQUIRED - block-level title), "description": string (REQUIRED - block-level description), "items": [{ "title": string, "content": string }] }
    - checklist: { "title": string (REQUIRED - block-level title), "items": [{ "text": string, "checked": boolean }] }
    - flashcards: { "title": string (REQUIRED - block-level title), "description": string (REQUIRED - block-level description), "cards": [{ "front": string, "back": string }] }
@@ -3101,9 +3101,22 @@ Generate a comprehensive course with at least 8-12 content blocks (not counting 
           // Generate based on type and content
           switch (block.type) {
             case 'text-image':
-              generatedTitle = block.data?.body ? 
-                block.data.body.substring(0, 60).replace(/\n/g, ' ').trim().replace(/\.+$/, '') || `Content Slide ${index + 1}` :
+              // Map "body" to "content" if present (from AI generation)
+              if (block.data?.body && !block.data.content) {
+                block.data.content = block.data.body;
+                delete block.data.body; // Clean up old field
+              }
+              generatedTitle = block.data?.content || block.data?.body ? 
+                (block.data.content || block.data.body).substring(0, 60).replace(/\n/g, ' ').trim().replace(/\.+$/, '') || `Content Slide ${index + 1}` :
                 `Content Slide ${index + 1}`;
+              // Ensure content field exists
+              if (!block.data.content && !block.data.body) {
+                block.data = { ...block.data, content: '' };
+              }
+              // Ensure layout exists
+              if (!block.data.layout) {
+                block.data = { ...block.data, layout: 'right' };
+              }
               break;
             case 'accordion':
               generatedTitle = block.data?.title || block.data?.items?.[0]?.title || `Accordion Section ${index + 1}`;

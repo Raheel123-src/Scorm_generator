@@ -250,7 +250,7 @@ async function generateSlideScript(basePrompt, slideIndex, totalSlides, previous
       messages: [
         {
           role: 'system',
-          content: 'You are a script writer for educational audio content. Create engaging, conversational scripts that are clear, friendly, and educational.'
+          content: 'You are a script writer for educational audio content. Create engaging, conversational scripts that are clear, friendly, and educational. Keep scripts concise - aim for 1 minute of audio (approximately 150-300 words or 200-400 tokens).'
         },
         {
           role: 'user',
@@ -258,7 +258,7 @@ async function generateSlideScript(basePrompt, slideIndex, totalSlides, previous
         }
       ],
       temperature: 0.7,
-      max_tokens: 1000
+      max_tokens: 400
     }, {
       headers: {
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -297,7 +297,7 @@ Previous slide context: ${previousContent}
 
 Current slide content: ${content}
 
-Create a friendly, conversational audio summary (2-3 minutes max) that:
+Create a friendly, conversational audio summary (1-2 minutes max, approximately 150-300 words) that:
 1. Greets the learner warmly or continues context connecting to previous content naturally
 2. Explains the current slide content in an engaging, easy-to-understand way
 3. Uses encouraging language like "Let's explore together" or "You're doing great!"
@@ -498,14 +498,34 @@ const generateSCORM = async (req, res) => {
         console.log(`ℹ️  No video processing needed for this block`);
       }
       
-      // Generate HTML content AFTER video processing is complete
+      // Generate TTS audio FIRST (if requested) so we know if audio exists when generating HTML
+      let hasAudioFile = false;
+      if (includeTTS) {
+        const slideContent = extractSlideContent(block);
+        const audioData = await generateTTSAudio(slideContent, i, processedContent.length, previousContent);
+        
+        if (audioData) {
+          const audioFile = `audio_${i + 1}.mp3`;
+          fs.writeFileSync(path.join(tempDir, audioFile), audioData);
+          audioFiles.push(audioFile);
+          hasAudioFile = true;
+          console.log(`Audio file created: ${audioFile}`);
+        } else {
+          console.warn(`TTS audio generation failed for slide ${i + 1}. Continuing without audio.`);
+        }
+        
+        previousContent = slideContent;
+      }
+      
+      // Generate HTML content AFTER video processing and audio generation
       console.log(`\n📝 GENERATING HTML for slide ${i + 1}`);
       console.log(`   - Block videoUrl: ${block.data.videoUrl}`);
       console.log(`   - Block documentUrl: ${block.data.documentUrl}`);
       console.log(`   - Block type: ${block.type}`);
       console.log(`   - Block data:`, JSON.stringify(block.data, null, 2));
+      console.log(`   - Has audio: ${hasAudioFile}`);
       
-      const htmlContent = await generateSlideHTML(block, i, processedContent.length, includeTTS);
+      const htmlContent = await generateSlideHTML(block, i, processedContent.length, includeTTS, hasAudioFile);
       
       // Log the generated HTML to see what video URL is being used
       if (block.type === 'video') {
@@ -541,28 +561,13 @@ const generateSCORM = async (req, res) => {
       const slideFile = `slide_${i + 1}.html`;
       fs.writeFileSync(path.join(tempDir, slideFile), htmlContent);
       console.log(`✅ HTML written to: ${slideFile}`);
-
-      // Generate TTS audio if requested
-      if (includeTTS) {
-        const slideContent = extractSlideContent(block);
-        const audioData = await generateTTSAudio(slideContent, i, processedContent.length, previousContent);
-        
-        if (audioData) {
-          const audioFile = `audio_${i + 1}.mp3`;
-          fs.writeFileSync(path.join(tempDir, audioFile), audioData);
-          audioFiles.push(audioFile);
-          console.log(`Audio file created: ${audioFile}`);
-        } else {
-          console.warn(`TTS audio generation failed for slide ${i + 1}. Continuing without audio.`);
-        }
-        
-        previousContent = slideContent;
-      }
     }
 
     // Generate main entry point - use first slide as entry point
     // Use the processed content (with updated video URLs) for the first slide
-    const firstSlideHTML = await generateSlideHTML(processedContent[0], 0, processedContent.length, includeTTS);
+    const firstSlideAudioFile = 'audio_1.mp3';
+    const firstSlideHasAudio = includeTTS && audioFiles.includes(firstSlideAudioFile);
+    const firstSlideHTML = await generateSlideHTML(processedContent[0], 0, processedContent.length, includeTTS, firstSlideHasAudio);
     fs.writeFileSync(path.join(tempDir, 'index.html'), firstSlideHTML);
 
     // Generate SCORM API JavaScript
@@ -801,9 +806,10 @@ function generateSCORMManifest(scormPackage) {
 }
 
 // Helper function to generate slide HTML
-async function generateSlideHTML(block, index, totalSlides, includeTTS) {
+async function generateSlideHTML(block, index, totalSlides, includeTTS, hasAudioFile = false) {
   const slideContent = await generateSlideContent(block);
-  const audioElement = includeTTS ? `
+  // Only create audio element if audio file exists for this slide
+  const audioElement = (includeTTS && hasAudioFile) ? `
     <audio id="slideAudio" preload="auto" style="display: none;">
       <source src="audio_${index + 1}.mp3" type="audio/mpeg">
     </audio>
@@ -897,7 +903,7 @@ async function generateSlideHTML(block, index, totalSlides, includeTTS) {
     <div class="navigation">
         <button class="nav-btn" id="prevBtn" onclick="goToPrevious()">Previous</button>
         <span>Slide ${index + 1} of ${totalSlides}</span>
-        <button class="nav-btn" id="nextBtn" onclick="goToNext()">Next</button>
+        <button class="nav-btn" id="nextBtn" onclick="goToNext()" ${(includeTTS && hasAudioFile) ? 'disabled' : ''}>Next</button>
     </div>
     
     <div class="completion-overlay" id="completionOverlay">
@@ -940,50 +946,136 @@ async function generateSlideHTML(block, index, totalSlides, includeTTS) {
         initializeSCORM();
         
         // Audio handling
-        ${includeTTS ? `
+        ${(includeTTS && hasAudioFile) ? `
+        let audioReady = false;
+        let audioCheckDone = false;
+        
+        function initAudio() {
+            if (audioCheckDone) return;
+            audioCheckDone = true;
+            
+            const audio = document.getElementById('slideAudio');
+            if (!audio) {
+                console.log('No audio element found');
+                enableNavigation();
+                return;
+            }
+            
+            // Check if audio is already ready
+            if (audio.readyState >= 2) {
+                console.log('Audio already ready');
+                audioReady = true;
+                playSlideAudio();
+                return;
+            }
+            
+            // Set up event listeners
+            audio.addEventListener('canplaythrough', function onCanPlay() {
+                console.log('Audio ready to play');
+                if (!audioReady) {
+                    audioReady = true;
+                    playSlideAudio();
+                }
+            }, { once: true });
+            
+            audio.addEventListener('error', function onError() {
+                console.log('Audio file not found or failed to load');
+                enableNavigation();
+            }, { once: true });
+            
+            // Try to load audio
+            audio.load();
+            
+            // Fallback: if audio doesn't load within 2 seconds
+            setTimeout(function() {
+                if (!audioReady) {
+                    // Check if audio loaded in the meantime
+                    if (audio.readyState >= 2) {
+                        audioReady = true;
+                        playSlideAudio();
+                    } else {
+                        console.log('Audio not ready after timeout, enabling navigation');
+                        enableNavigation();
+                    }
+                }
+            }, 2000);
+        }
+        
         function playSlideAudio() {
             if (audioPlayed) return;
+            
             const audio = document.getElementById('slideAudio');
             const progress = document.getElementById('audioProgress');
             const progressFill = document.getElementById('progressFill');
             
-            if (audio) {
-                audioPlayed = true;
-                progress.style.display = 'block';
-                
-                audio.addEventListener('timeupdate', function() {
+            if (!audio || !audioReady) {
+                console.log('Audio not ready, cannot play');
+                return;
+            }
+            
+            audioPlayed = true;
+            if (progress) progress.style.display = 'block';
+            
+            // Set up progress tracking
+            audio.addEventListener('timeupdate', function updateProgress() {
+                if (progressFill && audio.duration) {
                     const percent = (audio.currentTime / audio.duration) * 100;
                     progressFill.style.width = percent + '%';
-                });
-                
-                audio.addEventListener('ended', function() {
-                    progress.style.display = 'none';
-                    enableNavigation();
-                });
-                
-                audio.play().catch(e => {
-                    console.log('Audio play failed:', e);
-                    enableNavigation();
-                });
-            } else {
+                }
+            });
+            
+            // Handle audio end
+            audio.addEventListener('ended', function onEnded() {
+                console.log('Audio ended');
+                if (progress) progress.style.display = 'none';
                 enableNavigation();
+            }, { once: true });
+            
+            // Handle audio errors during playback
+            audio.addEventListener('error', function onPlaybackError(e) {
+                console.log('Audio playback error:', e);
+                if (progress) progress.style.display = 'none';
+                enableNavigation();
+            }, { once: true });
+            
+            // Try to play audio
+            const playPromise = audio.play();
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    console.log('Audio started playing');
+                }).catch(e => {
+                    console.log('Audio play failed (autoplay policy):', e);
+                    // Enable navigation if autoplay fails (browser policy)
+                    if (progress) progress.style.display = 'none';
+                    enableNavigation();
+                });
             }
         }
         
         function enableNavigation() {
-            document.getElementById('nextBtn').disabled = false;
+            const nextBtn = document.getElementById('nextBtn');
+            if (nextBtn) {
+                nextBtn.disabled = false;
+                console.log('Navigation enabled');
+            }
         }
         
-        // Auto-play audio when slide loads
-        window.addEventListener('load', function() {
-            playSlideAudio();
-        });
+        // Initialize audio when page loads
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initAudio);
+        } else {
+            // DOM already loaded
+            initAudio();
+        }
         ` : `
         function enableNavigation() {
-            document.getElementById('nextBtn').disabled = false;
+            const nextBtn = document.getElementById('nextBtn');
+            if (nextBtn) {
+                nextBtn.disabled = false;
+            }
         }
         
-        window.addEventListener('load', function() {
+        document.addEventListener('DOMContentLoaded', function() {
             enableNavigation();
         });
         `}

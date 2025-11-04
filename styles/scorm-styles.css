@@ -822,8 +822,7 @@ body {
 
 .flashcards-container {
   display: flex;
-  gap: 20px;
-  justify-content: center;
+  gap: 24px;
   align-items: center;
   flex-wrap: wrap;
   margin: 2rem 0;
@@ -835,25 +834,27 @@ body {
 .flashcards-container.horizontal {
   flex-direction: row;
   overflow-x: auto;
-  padding: 20px 0;
+  padding-bottom: 8px;
   flex-wrap: nowrap;
+  gap: 24px;
 }
 
 .flashcard {
   width: 340px;
   height: 450px;
   background: #3b82f6;
-  border-radius: 34px;
+  border-radius: 16px;
   padding: 24px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s;
   position: relative;
+  min-height: 350px;
   display: flex;
+  margin-top: 10px;
   flex-direction: column;
   transform-style: preserve-3d;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   flex-shrink: 0;
-  margin: 0 10px;
 }
 
 /* Horizontal layout - no stacking needed */
@@ -863,16 +864,9 @@ body {
   box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
 }
 
-/* Visual indicator for clickable cards */
-.flashcard:not(.slide-out) {
-  cursor: pointer;
-  border: 2px solid transparent;
-  transition: all 0.3s ease;
-}
-
-.flashcard:not(.slide-out):hover {
-  border-color: rgba(255, 255, 255, 0.3);
-  transform: translateY(-2px) scale(1.02);
+.flashcard.active {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(59, 130, 246, 0.4);
 }
 
 /* Add a subtle pulse animation to indicate cards can be flipped multiple times */
@@ -902,6 +896,10 @@ body {
 
 .flashcard.flipped:hover {
   transform: rotateY(180deg) translateY(-2px);
+}
+
+.flashcard.flipped.active {
+  transform: rotateY(180deg) translateY(-4px);
 }
 
 .flashcard.slide-out {

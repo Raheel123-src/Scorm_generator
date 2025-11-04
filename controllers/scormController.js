@@ -10,6 +10,7 @@ const pdfExtraction = require('pdf-extraction');
 const mammoth = require('mammoth');
 const multer = require('multer');
 const os = require('os');
+const cleanupService = require('../utils/cleanup');
 
 // Configure multer for file uploads
 const upload = multer({
@@ -361,6 +362,9 @@ Make it feel like a friendly tutor is personally guiding the learner through the
 
 // Generate SCORM package with TTS audio
 const generateSCORM = async (req, res) => {
+  let tempDir = null;
+  let zipPath = null;
+  
   try {
     const packageId = req.params.id;
     const { includeTTS = false, videoData = {}, documentData = {} } = req.body;
@@ -385,8 +389,10 @@ const generateSCORM = async (req, res) => {
     }
 
     // Create temporary directory for SCORM package
-    const tempDir = path.join(__dirname, '..', 'temp', `scorm_${packageId}_${Date.now()}`);
-    fs.mkdirSync(tempDir, { recursive: true });
+    // Use system temp directory for better scalability and automatic cleanup
+    const timestamp = Date.now();
+    const tempSubDir = `scorm_${packageId}_${timestamp}`;
+    tempDir = cleanupService.getTempDir(tempSubDir);
     
     // Create assets directory for video files
     const assetsDir = path.join(tempDir, 'assets');
@@ -581,7 +587,7 @@ const generateSCORM = async (req, res) => {
     }
 
     // Create ZIP package - create in parent directory to avoid including ZIP in itself
-    const zipPath = path.join(tempDir, '..', `scorm_package_${packageId}_${Date.now()}.zip`);
+    zipPath = path.join(tempDir, '..', `scorm_package_${packageId}_${Date.now()}.zip`);
     const output = fs.createWriteStream(zipPath);
     const archive = archiver('zip', { zlib: { level: 9 } });
 
@@ -747,7 +753,34 @@ const generateSCORM = async (req, res) => {
 
   } catch (error) {
     console.error('Generate SCORM package error:', error);
+    
+    // Cleanup temp directory on error
+    if (tempDir) {
+      try {
+        if (fs.existsSync(tempDir)) {
+          fs.rmSync(tempDir, { recursive: true, force: true });
+          console.log('✅ Cleaned up temp directory after error');
+        }
+      } catch (cleanupErr) {
+        console.error('Error cleaning up tempDir after error:', cleanupErr);
+      }
+    }
+    
+    // Cleanup ZIP file if it was created
+    if (zipPath) {
+      try {
+        if (fs.existsSync(zipPath)) {
+          fs.unlinkSync(zipPath);
+          console.log('✅ Cleaned up ZIP file after error');
+        }
+      } catch (cleanupErr) {
+        console.error('Error cleaning up zipPath after error:', cleanupErr);
+      }
+    }
+    
+    if (!res.headersSent) {
     res.status(500).json({ message: 'Server error while generating SCORM package' });
+  }
   }
 };
 
@@ -1013,9 +1046,9 @@ async function generateSlideHTML(block, index, totalSlides, includeTTS, hasAudio
                 return;
             }
             
-            audioPlayed = true;
+                audioPlayed = true;
             if (progress) progress.style.display = 'block';
-            
+                
             // Set up progress tracking
             audio.addEventListener('timeupdate', function updateProgress() {
                 if (progressFill && audio.duration) {
@@ -1028,14 +1061,14 @@ async function generateSlideHTML(block, index, totalSlides, includeTTS, hasAudio
             audio.addEventListener('ended', function onEnded() {
                 console.log('Audio ended');
                 if (progress) progress.style.display = 'none';
-                enableNavigation();
+                    enableNavigation();
             }, { once: true });
             
             // Handle audio errors during playback
             audio.addEventListener('error', function onPlaybackError(e) {
                 console.log('Audio playback error:', e);
                 if (progress) progress.style.display = 'none';
-                enableNavigation();
+                    enableNavigation();
             }, { once: true });
             
             // Try to play audio
@@ -1047,7 +1080,7 @@ async function generateSlideHTML(block, index, totalSlides, includeTTS, hasAudio
                     console.log('Audio play failed (autoplay policy):', e);
                     // Enable navigation if autoplay fails (browser policy)
                     if (progress) progress.style.display = 'none';
-                    enableNavigation();
+                enableNavigation();
                 });
             }
         }

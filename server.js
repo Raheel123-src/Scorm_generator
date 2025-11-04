@@ -103,6 +103,11 @@ app.use((err, req, res, next) => {
 });
 
 // Start server with error handling
+// Initialize cleanup service for temporary directories
+const cleanupService = require('./utils/cleanup');
+// Start periodic cleanup (every 30 minutes)
+cleanupService.startPeriodicCleanup(30);
+
 const server = app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/api/health`);

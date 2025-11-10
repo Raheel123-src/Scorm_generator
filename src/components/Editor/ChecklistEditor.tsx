@@ -45,6 +45,14 @@ export default function ChecklistEditor({ data, onChange }: ChecklistEditorProps
   const visibilityRef = useRef<HTMLDivElement>(null)
   const colorPickerRef = useRef<HTMLDivElement>(null)
 
+  // Sync data.title with block.title when it changes
+  useEffect(() => {
+    if (data.title !== undefined && data.title !== formData.title) {
+      setFormData(prev => ({ ...prev, title: data.title }))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.title])
+
   // Click outside handlers
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -326,7 +334,11 @@ export default function ChecklistEditor({ data, onChange }: ChecklistEditorProps
         {/* Render children if they exist */}
         {item.children && item.children.length > 0 && (
           <div className="sublist-container">
-            {item.children.map((child: any) => renderChecklistItem(child, true))}
+            {item.children.map((child: any, childIndex: number) => (
+              <div key={child.id || `child-${item.id}-${childIndex}`}>
+                {renderChecklistItem(child, true)}
+              </div>
+            ))}
           </div>
         )}
       </div>

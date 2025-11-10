@@ -42,6 +42,17 @@ export default function FlashcardEditor({ data, onChange }: FlashcardEditorProps
   const displayDropdownRef = useRef<HTMLDivElement>(null)
   const visibilityDropdownRef = useRef<HTMLDivElement>(null)
 
+  // Sync data.title and data.description with block.title/description when they change
+  useEffect(() => {
+    if (data.title !== undefined && data.title !== formData.title) {
+      setFormData(prev => ({ ...prev, title: data.title }))
+    }
+    if (data.description !== undefined && data.description !== formData.description) {
+      setFormData(prev => ({ ...prev, description: data.description }))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.title, data.description])
+
   // Initialize cardImages from persisted data
   useEffect(() => {
     const initialImages: {[key: string]: string} = {}
@@ -256,7 +267,7 @@ export default function FlashcardEditor({ data, onChange }: FlashcardEditorProps
         <div className="flashcard-cards-container">
           {formData.cards.map((card, index) => (
             <div 
-              key={card.id} 
+              key={card.id || `card-${index}`} 
               className={`flashcard-card ${activeCard === card.id ? 'active' : ''} ${flippedCards.has(card.id) ? 'flipped' : ''}`}
               style={{
                 backgroundColor: displayOptions[card.id]?.backgroundColour === false ? 'white' : '#3b82f6'
@@ -392,7 +403,7 @@ export default function FlashcardEditor({ data, onChange }: FlashcardEditorProps
         <div className="nav-cards">
           {formData.cards.map((card, index) => (
             <button
-              key={card.id}
+              key={card.id || `card-${index}`}
               className={`nav-card-btn ${activeCard === card.id ? 'active' : ''}`}
               onClick={() => setActiveCard(card.id)}
             >

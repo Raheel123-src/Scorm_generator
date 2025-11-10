@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { 
@@ -19,15 +20,18 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/lib/AuthContext'
 import { scormAPI } from '@/lib/api'
+import './dashboard.css'
 
 interface SCORMPackage {
   id: string
   title: string
   description: string
+  userId: string
+  content: any[] // Full content array exactly as stored (from frontend format)
   createdAt: string
   updatedAt: string
   isPublished: boolean
-  contentBlocks: number
+  contentBlocks?: number // Optional for backwards compatibility
 }
 
 export default function DashboardPage() {
@@ -35,16 +39,22 @@ export default function DashboardPage() {
   const [scorms, setScorms] = useState<SCORMPackage[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const { user, logout } = useAuth()
+  const { user, logout, loading: authLoading } = useAuth()
   const router = useRouter()
+  
+  // Document upload state
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [courseTitle, setCourseTitle] = useState('')
 
   useEffect(() => {
-    if (!user) {
+    if (!authLoading && !user) {
       router.push('/login')
       return
     }
     loadSCORMs()
-  }, [user, router])
+  }, [user, authLoading, router])
 
   const loadSCORMs = async () => {
     try {
@@ -75,152 +85,171 @@ export default function DashboardPage() {
     router.push('/')
   }
 
-  if (!user) {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0]
+      // Validate file type
+      const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+      if (!validTypes.includes(file.type)) {
+        setUploadError('Please select a PDF or DOC/DOCX file')
+        return
+      }
+      // Validate file size (50MB)
+      if (file.size > 50 * 1024 * 1024) {
+        setUploadError('File size must be less than 50MB')
+        return
+      }
+      setSelectedFile(file)
+      setUploadError('')
+    }
+  }
+
+  const handleGenerateFromDoc = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!selectedFile) {
+      setUploadError('Please select a document file')
+      return
+    }
+
+    if (!courseTitle || courseTitle.trim() === '') {
+      setUploadError('Please enter a course title')
+      return
+    }
+
+    try {
+      setUploading(true)
+      setUploadError('')
+
+      const token = localStorage.getItem('authToken')
+      if (!token) {
+        setUploadError('Please log in to generate SCORM')
+        return
+      }
+
+      const formData = new FormData()
+      formData.append('document', selectedFile)
+      formData.append('title', courseTitle.trim())
+
+      const response = await fetch('http://localhost:5001/api/scorm/generate-from-doc', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to generate SCORM' }))
+        throw new Error(errorData.message || 'Failed to generate SCORM from document')
+      }
+
+      const scormData = await response.json()
+      console.log('Generated SCORM data:', scormData)
+
+      // Create SCORM package in database
+      const createResponse = await fetch('http://localhost:5001/api/scorm', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          title: scormData.title,
+          description: scormData.description || 'Generated from uploaded document',
+          content: scormData.content
+        })
+      })
+
+      if (!createResponse.ok) {
+        throw new Error('Failed to save SCORM package')
+      }
+
+      const createdScorm = await createResponse.json()
+      console.log('SCORM package created:', createdScorm)
+
+      // Redirect to editor with the generated SCORM
+      router.push(`/editor/new?id=${createdScorm.id}`)
+      
+    } catch (error: any) {
+      console.error('Error generating SCORM from document:', error)
+      setUploadError(error.message || 'Failed to generate SCORM from document')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  if (authLoading || !user) {
     return (
-      <div style={{ 
-        minHeight: '100vh', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center',
-        background: '#f9fafb'
-      }}>
-        <Loader2 size={32} style={{ animation: 'spin 1s linear infinite' }} />
+      <div className="dashboard-loading-container">
+        <Loader2 size={32} className="dashboard-loading-spinner" />
       </div>
     )
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f9fafb' }}>
+    <div className="dashboard-container">
       {/* Sidebar */}
-      <div style={{ 
-        position: 'fixed', 
-        top: 0, 
-        left: 0, 
-        bottom: 0, 
-        zIndex: 50, 
-        width: '16rem', 
-        background: 'white', 
-        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' 
-      }}>
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div className="dashboard-sidebar">
+        <div className="dashboard-sidebar-inner">
           {/* Logo */}
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            height: '4rem', 
-            padding: '0 1rem', 
-            borderBottom: '1px solid #e5e7eb' 
-          }}>
-            <Link href="/" style={{ 
-              fontSize: '1.5rem', 
-              fontWeight: 'bold', 
-              color: '#9333ea',
-              textDecoration: 'none'
-            }}>
-              LisaStudio
+          <div className="dashboard-logo-container">
+            <Link href="/" className="dashboard-logo-link">
+              <Image
+                src="/images/dashboard/image.png"
+                alt="LisaStudio logo"
+                width={160}
+                height={40}
+                className="dashboard-logo-image"
+                priority
+              />
             </Link>
           </div>
 
           {/* Navigation */}
-          <nav style={{ flex: 1, padding: '1.5rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <nav className="dashboard-nav">
             <button
               onClick={() => setActiveTab('my-scorms')}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                padding: '0.75rem',
-                fontSize: '0.875rem',
-                fontWeight: '500',
-                borderRadius: '0.5rem',
-                border: 'none',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                background: activeTab === 'my-scorms' ? '#f3e8ff' : 'transparent',
-                color: activeTab === 'my-scorms' ? '#7c3aed' : '#374151'
-              }}
+              className={`dashboard-nav-button ${activeTab === 'my-scorms' ? 'active' : ''}`}
             >
-              <FileText size={20} style={{ marginRight: '0.75rem' }} />
+              <FileText size={20} className="dashboard-nav-button-icon" />
               My Courses
             </button>
             
             <button
               onClick={() => setActiveTab('create-new')}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                padding: '0.75rem',
-                fontSize: '0.875rem',
-                fontWeight: '500',
-                borderRadius: '0.5rem',
-                border: 'none',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                background: activeTab === 'create-new' ? '#f3e8ff' : 'transparent',
-                color: activeTab === 'create-new' ? '#7c3aed' : '#374151'
-              }}
+              className={`dashboard-nav-button ${activeTab === 'create-new' ? 'active' : ''}`}
             >
-              <Plus size={20} style={{ marginRight: '0.75rem' }} />
-              Create New Course
+              <Plus size={20} className="dashboard-nav-button-icon" />
+              Change Doc to Scorm
             </button>
             
             <button
               onClick={() => setActiveTab('account')}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                padding: '0.75rem',
-                fontSize: '0.875rem',
-                fontWeight: '500',
-                borderRadius: '0.5rem',
-                border: 'none',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                background: activeTab === 'account' ? '#f3e8ff' : 'transparent',
-                color: activeTab === 'account' ? '#7c3aed' : '#374151'
-              }}
+              className={`dashboard-nav-button ${activeTab === 'account' ? 'active' : ''}`}
             >
-              <User size={20} style={{ marginRight: '0.75rem' }} />
+              <User size={20} className="dashboard-nav-button-icon" />
               Account
             </button>
           </nav>
 
           {/* User section */}
-          <div style={{ padding: '1rem', borderTop: '1px solid #e5e7eb' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div style={{ 
-                width: '2rem', 
-                height: '2rem', 
-                background: 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)', 
-                borderRadius: '50%', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center' 
-              }}>
-                <User size={16} style={{ color: 'white' }} />
+          <div className="dashboard-user-section">
+            <div className="dashboard-user-container">
+              <div className="dashboard-user-avatar">
+                <User size={16} className="dashboard-user-avatar-icon" />
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: '0.875rem', fontWeight: '500', color: '#111827', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div className="dashboard-user-info">
+                <p className="dashboard-user-name">
                   {user?.name || 'User'}
                 </p>
-                <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <p className="dashboard-user-email">
                   {user?.email || 'user@example.com'}
                 </p>
               </div>
               <button 
                 onClick={handleLogout}
-                style={{ 
-                  color: '#9ca3af', 
-                  background: 'none', 
-                  border: 'none', 
-                  cursor: 'pointer',
-                  padding: '0.25rem',
-                  borderRadius: '0.25rem',
-                  transition: 'color 0.2s'
-                }}
+                className="dashboard-logout-button"
               >
                 <LogOut size={16} />
               </button>
@@ -230,22 +259,16 @@ export default function DashboardPage() {
       </div>
 
       {/* Main content */}
-      <div style={{ paddingLeft: '16rem' }}>
-        <div style={{ padding: '2rem' }}>
+      <div className="dashboard-main-content">
+        <div className="dashboard-content-inner">
           {/* Header */}
-          <div style={{ marginBottom: '2rem' }}>
-            <h1 style={{ 
-              fontSize: '1.875rem', 
-              fontWeight: 'bold', 
-              color: '#111827', 
-              marginBottom: '0.5rem',
-              margin: 0
-            }}>
+          <div className="dashboard-header">
+            <h1 className="dashboard-title">
               {activeTab === 'my-scorms' && 'My Courses'}
-              {activeTab === 'create-new' && 'Create New Course'}
+              {activeTab === 'create-new' && 'Change Doc to Scorm'}
               {activeTab === 'account' && 'Account Settings'}
             </h1>
-            <p style={{ color: '#6b7280', margin: 0 }}>
+            <p className="dashboard-subtitle">
               {activeTab === 'my-scorms' && 'Manage and edit your courses'}
               {activeTab === 'create-new' && 'Start building your new course'}
               {activeTab === 'account' && 'Manage your account settings and preferences'}
@@ -260,126 +283,72 @@ export default function DashboardPage() {
               transition={{ duration: 0.5 }}
             >
               {loading ? (
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
-                  <Loader2 size={32} style={{ animation: 'spin 1s linear infinite' }} />
+                <div className="dashboard-loading-center">
+                  <Loader2 size={32} className="dashboard-loading-spinner" />
                 </div>
               ) : error ? (
-                <div style={{ 
-                  padding: '2rem', 
-                  background: '#fef2f2', 
-                  border: '1px solid #fecaca', 
-                  borderRadius: '0.5rem',
-                  color: '#dc2626',
-                  textAlign: 'center'
-                }}>
+                <div className="dashboard-error">
                   {error}
                 </div>
               ) : scorms.length === 0 ? (
-                <div style={{ 
-                  padding: '3rem', 
-                  textAlign: 'center',
-                  background: 'white',
-                  borderRadius: '0.75rem',
-                  border: '1px solid #e5e7eb'
-                }}>
-                  <FileText size={48} style={{ color: '#9ca3af', marginBottom: '1rem' }} />
-                  <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#111827', marginBottom: '0.5rem' }}>
+                <div className="dashboard-empty-state">
+                  <FileText size={48} className="dashboard-empty-icon" />
+                  <h3 className="dashboard-empty-title">
                     No courses yet
                   </h3>
-                  <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
+                  <p className="dashboard-empty-description">
                     Create your first course to get started
                   </p>
-                  <Link href="/editor/new" style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    background: 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)',
-                    color: 'white',
-                    padding: '0.75rem 1.5rem',
-                    borderRadius: '0.5rem',
-                    textDecoration: 'none',
-                    fontWeight: '500'
-                  }}>
+                  <Link href="/editor/new" className="dashboard-primary-button">
                     <Plus size={20} />
                     Create First Course
                   </Link>
                 </div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                <div className="dashboard-scorms-grid">
                   {scorms.map((scorm, index) => (
                     <motion.div
                       key={scorm.id}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.5, delay: index * 0.1 }}
-                      style={{
-                        background: 'white',
-                        borderRadius: '0.75rem',
-                        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-                        border: '1px solid #e5e7eb',
-                        padding: '1.5rem',
-                        transition: 'box-shadow 0.3s'
-                      }}
+                      className="dashboard-scorm-card"
                     >
-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                        <div style={{ flex: 1 }}>
-                          <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#111827', marginBottom: '0.25rem' }}>
+                      <div className="dashboard-scorm-card-header">
+                        <div className="dashboard-scorm-card-content">
+                          <h3 className="dashboard-scorm-card-title">
                             {scorm.title}
                           </h3>
-                          <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                          <p className="dashboard-scorm-card-description">
                             {scorm.description || 'No description'}
                           </p>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.75rem', color: '#6b7280' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <div className="dashboard-scorm-card-meta">
+                            <span className="dashboard-scorm-card-meta-item">
                               <FileText size={12} />
                               {scorm.contentBlocks} blocks
                             </span>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                            <span className="dashboard-scorm-card-meta-item">
                               <Calendar size={12} />
                               {new Date(scorm.updatedAt).toLocaleDateString()}
                             </span>
                           </div>
                         </div>
-                        <button style={{ color: '#9ca3af', padding: '0.25rem' }}>
+                        <button className="dashboard-scorm-card-menu-button">
                           <MoreVertical size={16} />
                         </button>
                       </div>
                       
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div className="dashboard-scorm-card-actions">
                         <Link
-                          href={`/editor/${scorm.id}`}
-                          style={{
-                            flex: 1,
-                            background: 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)',
-                            color: 'white',
-                            fontSize: '0.875rem',
-                            padding: '0.5rem 1rem',
-                            borderRadius: '0.5rem',
-                            textDecoration: 'none',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '0.25rem',
-                            fontWeight: '500'
-                          }}
+                          href={`/editor/new?id=${scorm.id}`}
+                          className="dashboard-edit-button"
                         >
                           <Edit size={16} />
                           Edit
                         </Link>
                         <button 
                           onClick={() => handleDeleteSCORM(scorm.id)}
-                          style={{
-                            background: 'white',
-                            color: '#dc2626',
-                            fontSize: '0.875rem',
-                            padding: '0.5rem',
-                            borderRadius: '0.5rem',
-                            border: '1px solid #d1d5db',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}
+                          className="dashboard-delete-button"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -396,102 +365,71 @@ export default function DashboardPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              style={{ maxWidth: '32rem' }}
+              className="dashboard-max-width"
             >
-              <div style={{
-                background: 'white',
-                borderRadius: '0.75rem',
-                boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-                border: '1px solid #e5e7eb',
-                padding: '1.5rem'
-              }}>
-                <h2 style={{ 
-                  fontSize: '1.25rem', 
-                  fontWeight: '600', 
-                  color: '#111827', 
-                  marginBottom: '1rem',
-                  margin: 0
-                }}>
-                  Create New Course Package
+              <div className="dashboard-form-container">
+                <h2 className="dashboard-form-title">
+                  Change Doc to Scorm
                 </h2>
-                <form style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <div>
-                    <label htmlFor="title" style={{
-                      display: 'block',
-                      fontSize: '0.875rem',
-                      fontWeight: '500',
-                      color: '#374151',
-                      marginBottom: '0.25rem'
-                    }}>
+                <form className="dashboard-form" onSubmit={handleGenerateFromDoc}>
+                  <div className="dashboard-form-group">
+                    <label htmlFor="course-title" className="dashboard-form-label">
                       Course Title
                     </label>
                     <input
                       type="text"
-                      id="title"
-                      style={{
-                        width: '100%',
-                        padding: '0.75rem',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '0.5rem',
-                        fontSize: '0.875rem',
-                        outline: 'none',
-                        transition: 'border-color 0.2s, box-shadow 0.2s',
-                        boxSizing: 'border-box'
-                      }}
+                      id="course-title"
+                      className="dashboard-form-input"
                       placeholder="Enter course title"
+                      value={courseTitle}
+                      onChange={(e) => setCourseTitle(e.target.value)}
+                      disabled={uploading}
                     />
                   </div>
-                  <div>
-                    <label htmlFor="description" style={{
-                      display: 'block',
-                      fontSize: '0.875rem',
-                      fontWeight: '500',
-                      color: '#374151',
-                      marginBottom: '0.25rem'
-                    }}>
-                      Description
+                  <div className="dashboard-form-group">
+                    <label htmlFor="document" className="dashboard-form-label">
+                      Upload Document (PDF/DOC/DOCX)
                     </label>
-                    <textarea
-                      id="description"
-                      rows={3}
-                      style={{
-                        width: '100%',
-                        padding: '0.75rem',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '0.5rem',
-                        fontSize: '0.875rem',
-                        outline: 'none',
-                        transition: 'border-color 0.2s, box-shadow 0.2s',
-                        boxSizing: 'border-box',
-                        resize: 'vertical'
-                      }}
-                      placeholder="Enter course description"
+                    <input
+                      type="file"
+                      id="document"
+                      accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                      className="dashboard-form-input"
+                      onChange={handleFileChange}
+                      disabled={uploading}
+                      style={{ padding: '0.5rem' }}
                     />
+                    {selectedFile && (
+                      <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                        Selected: {selectedFile.name}
+                      </p>
+                    )}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <button type="submit" style={{
-                      background: 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)',
-                      color: 'white',
-                      fontWeight: '500',
-                      padding: '0.75rem 1.5rem',
-                      borderRadius: '0.5rem',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: '0.875rem'
-                    }}>
-                      Create Course
+                  {uploadError && (
+                    <div className="dashboard-error" style={{ padding: '1rem', fontSize: '0.875rem' }}>
+                      {uploadError}
+                    </div>
+                  )}
+                  <div className="dashboard-form-actions">
+                    <button 
+                      type="submit" 
+                      className="dashboard-primary-button"
+                      disabled={uploading || !selectedFile || !courseTitle.trim()}
+                      style={{ opacity: (uploading || !selectedFile || !courseTitle.trim()) ? 0.6 : 1, cursor: (uploading || !selectedFile || !courseTitle.trim()) ? 'not-allowed' : 'pointer' }}
+                    >
+                      {uploading ? 'Generating...' : 'Generate SCORM'}
                     </button>
-                    <button type="button" style={{
-                      background: 'white',
-                      color: '#374151',
-                      fontWeight: '500',
-                      padding: '0.75rem 1.5rem',
-                      borderRadius: '0.5rem',
-                      border: '1px solid #d1d5db',
-                      cursor: 'pointer',
-                      fontSize: '0.875rem'
-                    }}>
-                      Cancel
+                    <button 
+                      type="button" 
+                      className="dashboard-secondary-button"
+                      onClick={() => {
+                        setSelectedFile(null)
+                        setCourseTitle('')
+                        setUploadError('')
+                      }}
+                      disabled={uploading}
+                    >
+                      Clear
                     </button>
                   </div>
                 </form>
@@ -504,98 +442,38 @@ export default function DashboardPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              style={{ maxWidth: '32rem' }}
+              className="dashboard-max-width"
             >
-              <div style={{
-                background: 'white',
-                borderRadius: '0.75rem',
-                boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-                border: '1px solid #e5e7eb',
-                padding: '1.5rem'
-              }}>
-                <h2 style={{ 
-                  fontSize: '1.25rem', 
-                  fontWeight: '600', 
-                  color: '#111827', 
-                  marginBottom: '1rem',
-                  margin: 0
-                }}>
+              <div className="dashboard-form-container">
+                <h2 className="dashboard-form-title">
                   Account Settings
                 </h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '0.875rem',
-                      fontWeight: '500',
-                      color: '#374151',
-                      marginBottom: '0.25rem'
-                    }}>
+                <div className="dashboard-form">
+                  <div className="dashboard-form-group">
+                    <label className="dashboard-form-label">
                       Name
                     </label>
                     <input
                       type="text"
-                      style={{
-                        width: '100%',
-                        padding: '0.75rem',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '0.5rem',
-                        fontSize: '0.875rem',
-                        outline: 'none',
-                        transition: 'border-color 0.2s, box-shadow 0.2s',
-                        boxSizing: 'border-box'
-                      }}
+                      className="dashboard-form-input"
                       defaultValue={user?.name || 'User'}
                     />
                   </div>
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '0.875rem',
-                      fontWeight: '500',
-                      color: '#374151',
-                      marginBottom: '0.25rem'
-                    }}>
+                  <div className="dashboard-form-group">
+                    <label className="dashboard-form-label">
                       Email
                     </label>
                     <input
                       type="email"
-                      style={{
-                        width: '100%',
-                        padding: '0.75rem',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '0.5rem',
-                        fontSize: '0.875rem',
-                        outline: 'none',
-                        transition: 'border-color 0.2s, box-shadow 0.2s',
-                        boxSizing: 'border-box'
-                      }}
+                      className="dashboard-form-input"
                       defaultValue={user?.email || 'user@example.com'}
                     />
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <button style={{
-                      background: 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)',
-                      color: 'white',
-                      fontWeight: '500',
-                      padding: '0.75rem 1.5rem',
-                      borderRadius: '0.5rem',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: '0.875rem'
-                    }}>
+                  <div className="dashboard-form-actions">
+                    <button className="dashboard-primary-button">
                       Save Changes
                     </button>
-                    <button style={{
-                      background: 'white',
-                      color: '#374151',
-                      fontWeight: '500',
-                      padding: '0.75rem 1.5rem',
-                      borderRadius: '0.5rem',
-                      border: '1px solid #d1d5db',
-                      cursor: 'pointer',
-                      fontSize: '0.875rem'
-                    }}>
+                    <button className="dashboard-secondary-button">
                       Cancel
                     </button>
                   </div>
@@ -612,27 +490,13 @@ export default function DashboardPage() {
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ duration: 0.3, delay: 0.5 }}
-          style={{ position: 'fixed', bottom: '2rem', right: '2rem' }}
+          className="dashboard-fab"
         >
           <Link
             href="/editor/new"
-            style={{
-              background: 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)',
-              color: 'white',
-              padding: '1rem',
-              borderRadius: '50%',
-              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-              textDecoration: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              fontWeight: '500',
-              transition: 'all 0.3s',
-              minWidth: 'auto'
-            }}
+            className="dashboard-fab-link"
           >
             <Plus size={24} />
-            <span style={{ fontSize: '0.875rem' }}>New Course</span>
           </Link>
         </motion.div>
       )}

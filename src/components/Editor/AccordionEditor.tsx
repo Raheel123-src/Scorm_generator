@@ -39,6 +39,14 @@ const AccordionEditor = ({ data, onChange }: AccordionEditorProps) => {
   const visibilityRef = useRef<HTMLDivElement>(null)
   const colorPickerRef = useRef<HTMLDivElement>(null)
 
+  // Sync data.title with block.title when it changes
+  useEffect(() => {
+    if (data.title !== undefined && data.title !== formData.title) {
+      setFormData(prev => ({ ...prev, title: data.title }))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.title])
+
   // Click outside handlers
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -389,7 +397,7 @@ const AccordionEditor = ({ data, onChange }: AccordionEditorProps) => {
           {/* Accordion Items */}
           <div className="accordion-items">
             {formData.items.map((item, index) => (
-              <div key={item.id} className="accordion-item">
+              <div key={item.id || `item-${index}`} className="accordion-item">
                 <div className="accordion-item-header" onClick={() => toggleItem(item.id)}>
                   <div 
                     className="accordion-item-icon"

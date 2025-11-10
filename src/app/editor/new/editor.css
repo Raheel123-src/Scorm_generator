@@ -43,10 +43,15 @@
 }
 
 .editor-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #111827;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   margin: 0;
+}
+
+.editor-logo-image {
+  height: 40px;
+  width: auto;
 }
 
 .action-buttons {
@@ -185,7 +190,11 @@
 .mini-preview-container {
   flex: 1;
   margin-left: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
+
 
 /* Mini Preview Styles */
 .mini-preview {

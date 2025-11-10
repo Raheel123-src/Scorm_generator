@@ -3,7 +3,7 @@ import './globals.css'
 import { AuthProvider } from '@/lib/AuthContext'
 
 export const metadata: Metadata = {
-  title: 'SCORM Generator Platform',
+  title: 'LisaStudio',
   description: 'Create and manage SCORM packages with ease',
 }
 

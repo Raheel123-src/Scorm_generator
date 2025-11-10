@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { 
   Save, 
   Eye, 
@@ -27,6 +27,7 @@ import {
     } from 'lucide-react'
   import { LuPencil } from "react-icons/lu"
   import Link from 'next/link'
+  import NextImage from 'next/image'
   import AlignmentDropdown from '@/components/AlignmentDropdown'
   import TextImageEditor from '@/components/Editor/TextImageEditor'
   import VideoEditor from '@/components/Editor/VideoEditor'
@@ -82,6 +83,7 @@ export default function EditorPage() {
   ])
   const [activeBlock, setActiveBlock] = useState('1')
   const [loading, setLoading] = useState(false)
+  const [scormPackageId, setScormPackageId] = useState<string | null>(null) // Track current SCORM package ID
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [previewMode, setPreviewMode] = useState(false)
   const [hoveredType, setHoveredType] = useState<string | null>(null)
@@ -111,6 +113,98 @@ export default function EditorPage() {
   const [showSelectionDiv, setShowSelectionDiv] = useState(false)
   const [clickedBlockType, setClickedBlockType] = useState<string | null>(null)
   const [clickedBlockPosition, setClickedBlockPosition] = useState<{ x: number; y: number } | null>(null)
+
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Load SCORM package data when editing (id query parameter present)
+  useEffect(() => {
+    const loadSCORMPackage = async () => {
+      const packageId = searchParams?.get('id')
+      
+      if (packageId) {
+        try {
+          setLoading(true)
+          console.log('Loading SCORM package for editing:', packageId)
+          
+          const token = localStorage.getItem('authToken')
+          if (!token) {
+            console.warn('No auth token found')
+            return
+          }
+
+          const response = await fetch(`http://localhost:5001/api/scorm/${packageId}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          })
+
+          if (!response.ok) {
+            throw new Error('Failed to load SCORM package')
+          }
+
+          const scormData = await response.json()
+          console.log('Loaded SCORM package:', scormData)
+
+          // Set the package ID for updates
+          setScormPackageId(scormData.id)
+
+          // Set the title
+          if (scormData.title) {
+            setScormTitle(scormData.title)
+          }
+
+          // Load content blocks
+          if (scormData.content && Array.isArray(scormData.content) && scormData.content.length > 0) {
+            // Helper function to get block title
+            const getBlockTitleForLoad = (type: string) => {
+              const titles: { [key: string]: string } = {
+                welcome: 'Welcome Page',
+                quiz: 'Quiz',
+                'text-image': 'Text & Image',
+                video: 'Video',
+                document: 'Document',
+                flashcards: 'Flashcards',
+                hotspot: 'Hotspot Image',
+                accordion: 'Accordion',
+                checklist: 'Checklist',
+                embed: 'Embed',
+                'course-completed': 'Course Completed'
+              }
+              return titles[type] || 'Content Block'
+            }
+
+            // Map the content to match the editor's format
+            const loadedBlocks = scormData.content.map((block: any) => ({
+              id: block.id || `block_${Date.now()}_${Math.random()}`,
+              type: block.type,
+              title: block.title || getBlockTitleForLoad(block.type),
+              data: block.data || {}
+            }))
+
+            setContentBlocks(loadedBlocks)
+            
+            // Set the first block as active
+            if (loadedBlocks.length > 0) {
+              setActiveBlock(loadedBlocks[0].id)
+            }
+
+            console.log('Content blocks loaded:', loadedBlocks)
+          } else {
+            console.log('No content blocks found, using default blocks')
+          }
+        } catch (error: any) {
+          console.error('Error loading SCORM package:', error)
+          alert(`Failed to load course: ${error.message || 'Unknown error'}`)
+        } finally {
+          setLoading(false)
+        }
+      }
+    }
+
+    loadSCORMPackage()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   // Handle clicks outside selection div
   useEffect(() => {
@@ -467,6 +561,14 @@ Guidelines:
     return defaults[type] || {}
   }
 
+  const updateBlockTitle = (blockId: string, newTitle: string) => {
+    setContentBlocks(prevBlocks => 
+      prevBlocks.map(block => 
+        block.id === blockId ? { ...block, title: newTitle } : block
+      )
+    )
+  }
+
   const updateBlockData = (blockId: string, newData: any) => {
     console.log('updateBlockData called:', { blockId, newData })
     setContentBlocks(blocks => 
@@ -634,6 +736,136 @@ Guidelines:
     }
   }
 
+  // Save SCORM package to database
+  const handleSave = async () => {
+    try {
+      setLoading(true)
+
+      // Check if user is authenticated
+      const token = localStorage.getItem('authToken')
+      const userStr = localStorage.getItem('user')
+      
+      if (!token || !userStr) {
+        alert('Please log in to save SCORM packages')
+        window.location.href = '/login'
+        return
+      }
+
+      if (!scormTitle || scormTitle.trim() === '') {
+        alert('Please enter a title for your course')
+        setLoading(false)
+        return
+      }
+
+      if (contentBlocks.length === 0) {
+        alert('Please add at least one content block')
+        setLoading(false)
+        return
+      }
+
+      console.log('Saving SCORM package...')
+      console.log('Title:', scormTitle)
+      console.log('Content blocks:', contentBlocks.length)
+
+      // Process content blocks with required fields and convert blob URLs
+      const processedBlocks = await Promise.all(contentBlocks.map(async (block, index) => {
+        const processedBlock: any = {
+          ...block,
+          order: index + 1
+        }
+
+        // Ensure required fields are present
+        if (!processedBlock.id) {
+          processedBlock.id = `block_${index + 1}_${Date.now()}`
+        }
+        if (!processedBlock.type) {
+          processedBlock.type = 'text-image' // default type
+        }
+        if (!processedBlock.title) {
+          processedBlock.title = `Slide ${index + 1}`
+        }
+
+        // Convert blob URLs to data URLs for video content
+        if (block.type === 'video' && block.data.videoUrl && block.data.videoUrl.startsWith('blob:')) {
+          console.log('Converting video blob URL to data URL:', block.data.videoUrl)
+          try {
+            const dataURL = await convertBlobToDataURL(block.data.videoUrl)
+            processedBlock.data.videoUrl = dataURL
+            console.log('Video blob URL converted successfully')
+          } catch (error) {
+            console.error('Failed to convert video blob URL:', error)
+            // Keep original blob URL if conversion fails
+          }
+        }
+
+        // Convert blob URLs to data URLs for document content
+        if (block.type === 'document' && block.data.documentUrl && block.data.documentUrl.startsWith('blob:')) {
+          console.log('Converting document blob URL to data URL:', block.data.documentUrl)
+          try {
+            const dataURL = await convertBlobToDataURL(block.data.documentUrl)
+            processedBlock.data.documentUrl = dataURL
+            console.log('Document blob URL converted successfully')
+          } catch (error) {
+            console.error('Failed to convert document blob URL:', error)
+            // Keep original blob URL if conversion fails
+          }
+        }
+
+        return processedBlock
+      }))
+
+      console.log('Processed blocks for save:', processedBlocks)
+
+      // Prepare request body (same structure as create/update API expects)
+      const requestBody = {
+        title: scormTitle.trim(),
+        description: 'Generated course package',
+        content: processedBlocks
+      }
+
+      // Use UPDATE if package ID exists, otherwise CREATE
+      const apiUrl = scormPackageId 
+        ? `http://localhost:5001/api/scorm/${scormPackageId}`
+        : 'http://localhost:5001/api/scorm'
+      
+      const method = scormPackageId ? 'PUT' : 'POST'
+
+      console.log(`${method} request to:`, apiUrl)
+      
+      const response = await fetch(apiUrl, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(requestBody)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }))
+        console.error('Save error:', errorData)
+        throw new Error(`Failed to save SCORM package: ${errorData.message || 'Unknown error'}`)
+      }
+
+      const responseData = await response.json()
+      console.log('Save response:', responseData)
+
+      // Update the package ID if it was a new package
+      if (responseData.id && !scormPackageId) {
+        setScormPackageId(responseData.id)
+        console.log('SCORM package created with ID:', responseData.id)
+      } else {
+        console.log('SCORM package updated:', scormPackageId)
+      }
+
+      alert(`Course "${scormTitle}" saved successfully!`)
+    } catch (error: any) {
+      console.error('Save error:', error)
+      alert(`Failed to save course: ${error.message || 'Unknown error'}`)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const generateSCORMPackage = async (includeTTS: boolean) => {
     try {
@@ -1408,55 +1640,99 @@ Guidelines:
         return <WelcomeEditor block={block} />
       
       case 'text-image':
+        // Map "body" to "content" if present (from AI generation)
+        const textImageData = block.data || { layout: 'right', image: '', content: '', title: block.title || 'Untitled', altText: '' }
+        if (textImageData.body && !textImageData.content) {
+          textImageData.content = textImageData.body
+          delete textImageData.body
+          // Update block.data to reflect the change
+          updateBlockData(block.id, textImageData)
+        }
         return (
           <TextImageEditor 
-            data={block.data || { layout: 'right', image: '', content: '', title: 'Untitled', altText: '' }}
-            onChange={(data) => updateBlockData(block.id, data)}
+            data={textImageData}
+            onChange={(data) => {
+              updateBlockData(block.id, data)
+              // Sync title with block.title
+              if (data.title && data.title !== block.title) {
+                updateBlockTitle(block.id, data.title)
+              }
+            }}
           />
         )
       
       case 'video':
         return (
           <VideoEditor
-            data={block.data || { title: 'Untitled', videoUrl: '', enforceCompletion: false, description: '' }}
-            onChange={(data) => updateBlockData(block.id, data)}
+            data={block.data || { title: block.title || 'Untitled', videoUrl: '', enforceCompletion: false, description: '' }}
+            onChange={(data) => {
+              updateBlockData(block.id, data)
+              if (data.title && data.title !== block.title) {
+                updateBlockTitle(block.id, data.title)
+              }
+            }}
           />
         )
       
       case 'document':
         return (
           <DocumentEditor
-            data={block.data || { title: 'Untitled', documentUrl: '', enforceCompletion: false, description: '' }}
-            onChange={(data) => updateBlockData(block.id, data)}
+            data={block.data || { title: block.title || 'Untitled', documentUrl: '', enforceCompletion: false, description: '' }}
+            onChange={(data) => {
+              updateBlockData(block.id, data)
+              if (data.title && data.title !== block.title) {
+                updateBlockTitle(block.id, data.title)
+              }
+            }}
           />
         )
       
         case 'flashcards':
           return (
             <FlashcardEditor
-              data={block.data || { cards: [{ id: '1', front: 'Question 1', back: 'Add a description' }] }}
-              onChange={(data) => updateBlockData(block.id, data)}
+              data={block.data || { title: block.title || 'Untitled', description: '', cards: [{ id: '1', front: 'Question 1', back: 'Add a description' }] }}
+              onChange={(data) => {
+                updateBlockData(block.id, data)
+                if (data.title && data.title !== block.title) {
+                  updateBlockTitle(block.id, data.title)
+                }
+              }}
             />
           )
         case 'hotspot':
           return (
             <HotspotImageEditor
-              data={block.data || { title: 'Untitled', imageUrl: '', altText: '', hotspots: [] }}
-              onChange={(data) => updateBlockData(block.id, data)}
+              data={block.data || { title: block.title || 'Untitled', imageUrl: '', altText: '', hotspots: [] }}
+              onChange={(data) => {
+                updateBlockData(block.id, data)
+                if (data.title && data.title !== block.title) {
+                  updateBlockTitle(block.id, data.title)
+                }
+              }}
             />
           )
         case 'accordion':
           return (
             <AccordionEditor
-              data={block.data || { title: 'Untitled', description: '', items: [] }}
-              onChange={(data) => updateBlockData(block.id, data)}
+              data={block.data || { title: block.title || 'Untitled', description: '', items: [] }}
+              onChange={(data) => {
+                updateBlockData(block.id, data)
+                if (data.title && data.title !== block.title) {
+                  updateBlockTitle(block.id, data.title)
+                }
+              }}
             />
           )
         case 'checklist':
           return (
             <ChecklistEditor
-              data={block.data || { title: 'Untitled', items: [] }}
-              onChange={(data) => updateBlockData(block.id, data)}
+              data={block.data || { title: block.title || 'Untitled', items: [] }}
+              onChange={(data) => {
+                updateBlockData(block.id, data)
+                if (data.title && data.title !== block.title) {
+                  updateBlockTitle(block.id, data.title)
+                }
+              }}
             />
           )
         case 'quiz':
@@ -1469,8 +1745,13 @@ Guidelines:
         case 'embed':
           return (
             <EmbedEditor
-              data={block.data || { title: 'Untitled', url: '', description: '' }}
-              onChange={(data) => updateBlockData(block.id, data)}
+              data={block.data || { title: block.title || 'Untitled', url: '', description: '' }}
+              onChange={(data) => {
+                updateBlockData(block.id, data)
+                if (data.title && data.title !== block.title) {
+                  updateBlockTitle(block.id, data.title)
+                }
+              }}
             />
           )
         case 'course-completed':
@@ -1515,9 +1796,16 @@ Guidelines:
             Back to Dashboard
           </Link>
           <div style={{ width: '1px', height: '2rem', background: '#e5e7eb' }} />
-          <h1 className="editor-title">
-            LisaStudio
-          </h1>
+          <div className="editor-title" role="img" aria-label="LisaStudio">
+            <NextImage
+              src="/images/dashboard/image.png"
+              alt="LisaStudio logo"
+              width={160}
+              height={40}
+              className="editor-logo-image"
+              priority
+            />
+          </div>
         </div>
         
         <div className="header-right">
@@ -1536,7 +1824,7 @@ Guidelines:
             }}
           />
           <button
-            onClick={() => setLoading(true)}
+            onClick={handleSave}
             disabled={loading}
             style={{
               display: 'flex',

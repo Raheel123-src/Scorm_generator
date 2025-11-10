@@ -29,6 +29,28 @@ export default function TextImageEditor({ data, onChange }: TextImageEditorProps
     title: data.title || 'Untitled',
     altText: data.altText || ''
   })
+
+  // Update formData when data prop changes (especially title and content from block.data)
+  useEffect(() => {
+    if (data.title !== undefined && data.title !== formData.title) {
+      setFormData(prev => ({ ...prev, title: data.title }))
+    }
+    if (data.content !== undefined && data.content !== formData.content && data.content !== '') {
+      setFormData(prev => ({ ...prev, content: data.content }))
+    }
+    // Also check for "body" field (from AI generation) and map it to "content"
+    if (data.body !== undefined && data.body !== formData.content && data.body !== '') {
+      setFormData(prev => ({ ...prev, content: data.body }))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.title, data.content, data.body])
+
+  // Update contentEditable element when formData.content changes
+  useEffect(() => {
+    if (bodyContentRef.current && formData.content && bodyContentRef.current.textContent !== formData.content) {
+      bodyContentRef.current.textContent = formData.content
+    }
+  }, [formData.content])
   const [showLayoutDropdown, setShowLayoutDropdown] = useState(false)
   const [showVisibilityDropdown, setShowVisibilityDropdown] = useState(false)
   const [showColorPicker, setShowColorPicker] = useState(false)
@@ -43,6 +65,7 @@ export default function TextImageEditor({ data, onChange }: TextImageEditorProps
   const dropdownRef = useRef<HTMLDivElement>(null)
   const visibilityRef = useRef<HTMLDivElement>(null)
   const colorPickerRef = useRef<HTMLDivElement>(null)
+  const bodyContentRef = useRef<HTMLDivElement>(null)
 
   const layoutOptions = [
     { value: 'behind', label: 'Image behind', icon: '🖼️' },
@@ -325,6 +348,7 @@ export default function TextImageEditor({ data, onChange }: TextImageEditorProps
             
             {visibilityOptions.description && (
               <div 
+                ref={bodyContentRef}
                 contentEditable
                 suppressContentEditableWarning
                 className="text-body"
@@ -338,7 +362,7 @@ export default function TextImageEditor({ data, onChange }: TextImageEditorProps
                   handleChange('content', value)
                 }}
               >
-                {formData.content || 'When we are clear about things, we have knowledge; with knowledge, we seek the path of truth; when the search is rewarded, the heart becomes good; with the heart made good, the moral view of things that leads to virtue is attained. — Confucius'}
+                {formData.content || ''}
               </div>
             )}
           </div>

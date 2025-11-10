@@ -1516,29 +1516,18 @@ async function generateSlideHTML(block, index, totalSlides, includeTTS, hasAudio
                         nextBtn.disabled = false;
                         nextBtn.style.background = '#3b82f6';
                         nextBtn.style.cursor = 'pointer';
-                        
-                        // Update button text based on state
-                        if (checkedItems === totalItems) {
-                            nextBtn.textContent = 'Next';
-                        } else {
-                            nextBtn.textContent = 'Check Next Item';
-                        }
+                        nextBtn.textContent = checkedItems === totalItems ? 'Next' : 'Check Next Item';
                     } else {
                         nextBtn.disabled = true;
                         nextBtn.style.background = '#6b7280';
                         nextBtn.style.cursor = 'not-allowed';
                     }
                 } else {
-                    // For other slide types, use original logic
-                    if (checkedItems === totalItems && totalItems > 0) {
-                        nextBtn.disabled = false;
-                        nextBtn.style.background = '#3b82f6';
-                        nextBtn.style.cursor = 'pointer';
-                    } else {
-                        nextBtn.disabled = true;
-                        nextBtn.style.background = '#6b7280';
-                        nextBtn.style.cursor = 'not-allowed';
-                    }
+                    // For other slide types, keep navigation enabled
+                    nextBtn.disabled = false;
+                    nextBtn.style.background = '#3b82f6';
+                    nextBtn.style.cursor = 'pointer';
+                    nextBtn.textContent = 'Next';
                 }
             }
         }

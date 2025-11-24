@@ -1,10 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.API_BASE_URL ||
+  'https://scrom.lisaapp.in/api'
+
+type RouteContext = {
+  params: Promise<Record<string, string | string[] | undefined>>
+}
+
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteContext
 ) {
   try {
+    const params = await context.params
+    const idParam = params.id
+    const scormId = Array.isArray(idParam) ? idParam[0] : idParam
+
+    if (!scormId) {
+      return NextResponse.json({ message: 'Missing SCORM package id' }, { status: 400 })
+    }
+
     const body = await request.json()
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     
@@ -12,7 +29,7 @@ export async function POST(
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
     }
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/scorm/${params.id}/generate`, {
+    const response = await fetch(`${API_BASE_URL}/scorm/${scormId}/generate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

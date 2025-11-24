@@ -167,7 +167,7 @@ export default function DocumentEditor({ data, onChange }: DocumentEditorProps) 
       if (visibilityRef.current && !visibilityRef.current.contains(event.target as Node)) {
         setShowVisibilityDropdown(false)
       }
-      if (colorPickerRef.current && !colorPickerRef.contains(event.target as Node)) {
+      if (colorPickerRef.current && !colorPickerRef.current.contains(event.target as Node)) {
         setShowColorPicker(false)
       }
     }

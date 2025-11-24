@@ -10,15 +10,20 @@ interface QuizEditorProps {
   onChange: (data: QuizData) => void;
 }
 
+type QuestionType = QuizData['questions'][number]['type']
+type SentencePart = NonNullable<QuizData['questions'][number]['sentenceParts']>[number]
+type MatchPair = NonNullable<QuizData['questions'][number]['matchPairs']>[number]
+type SequenceItem = NonNullable<QuizData['questions'][number]['sequenceItems']>[number]
+
 const QuizEditor: React.FC<QuizEditorProps> = ({ data, onChange }) => {
-  const [formData, setFormData] = useState<QuizData>({
+  const [formData, setFormData] = useState<QuizData>(() => ({
     startTitle: 'Test your knowledge',
     startContent: 'Add your content here...',
     finishTitle: 'Congratulations! 😊',
     finishMessage: 'You have completed the quiz',
-    questions: [],
-    ...data
-  });
+    ...data,
+    questions: data.questions || []
+  }));
   const [selectedLayout, setSelectedLayout] = useState('default');
   const [displayOptions, setDisplayOptions] = useState('standard');
   const [alignment, setAlignment] = useState('left');
@@ -52,7 +57,7 @@ const QuizEditor: React.FC<QuizEditorProps> = ({ data, onChange }) => {
     };
   }, [showQuestionTypeDropdown, showQuestionTypeNavDropdown]);
 
-const questionTypes = [
+const questionTypes: Array<{ id: QuestionType; label: string; icon: string }> = [
     { id: 'mcq', label: 'Multiple choice', icon: '☑️' },
     { id: 'multiple', label: 'Multiple response', icon: '☑️' },
     { id: 'true-false', label: 'True / False', icon: '✓✗' },
@@ -66,8 +71,8 @@ const questionTypes = [
     setShowQuestionTypeDropdown(true);
   };
 
-  const handleQuestionTypeSelect = (type: string) => {
-    const getDefaultQuestion = (questionType: string) => {
+  const handleQuestionTypeSelect = (type: QuestionType) => {
+    const getDefaultQuestion = (questionType: QuestionType) => {
       switch (questionType) {
         case 'mcq':
           return 'Choose the correct answer from the options below:';
@@ -88,9 +93,9 @@ const questionTypes = [
       }
     };
 
-    const newQuestion = {
+    const newQuestion: QuizData['questions'][number] = {
       id: `question-${Date.now()}`,
-      type: type as any,
+      type,
       question: getDefaultQuestion(type),
       options: type === 'mcq' || type === 'multiple' ? ['Option 1', 'Option 2', 'Option 3', 'Option 4'] : undefined,
       correctAnswer: type === 'mcq' ? 0 : 
@@ -100,22 +105,28 @@ const questionTypes = [
                     type === 'fill-blank' ? [] : 
                     type === 'match' ? [] : 
                     type === 'sequence' ? [] : '',
-      sentenceParts: type === 'fill-blank' ? [
-        { type: 'text', text: 'The capital of France is' },
-        { type: 'blank', options: ['Paris', 'London', 'Berlin'], selectedAnswer: '' },
-        { type: 'text', text: '. It has a football club named as' },
-        { type: 'blank', options: ['PSG', 'Arsenal', 'Bayern'], selectedAnswer: '' }
-      ] : undefined,
-      matchPairs: type === 'match' ? [
-        { item: '', option: '' },
-        { item: '', option: '' }
-      ] : undefined,
-      sequenceItems: type === 'sequence' ? [
-        { text: 'Item 1' },
-        { text: 'Item 2' },
-        { text: 'Item 3' },
-        { text: '' }
-      ] : undefined,
+      sentenceParts: type === 'fill-blank'
+        ? ([
+            { type: 'text', text: 'The capital of France is' },
+            { type: 'blank', options: ['Paris', 'London', 'Berlin'], selectedAnswer: '' },
+            { type: 'text', text: '. It has a football club named as' },
+            { type: 'blank', options: ['PSG', 'Arsenal', 'Bayern'], selectedAnswer: '' }
+          ] as SentencePart[])
+        : undefined,
+      matchPairs: type === 'match'
+        ? ([
+            { item: '', option: '' },
+            { item: '', option: '' }
+          ] as MatchPair[])
+        : undefined,
+      sequenceItems: type === 'sequence'
+        ? ([
+            { text: 'Item 1' },
+            { text: 'Item 2' },
+            { text: 'Item 3' },
+            { text: '' }
+          ] as SequenceItem[])
+        : undefined,
       explanation: ''
     };
 
@@ -167,7 +178,7 @@ const questionTypes = [
     }
   };
 
-  const handleQuestionTypeChange = (questionId: string, newType: string) => {
+  const handleQuestionTypeChange = (questionId: string, newType: QuestionType) => {
     const updatedQuestions = formData.questions.map(q => 
       q.id === questionId ? { ...q, type: newType } : q
     );
@@ -646,7 +657,9 @@ const questionTypes = [
                                                 onClick={(e) => {
                                                   e.stopPropagation();
                                                   const newParts = [...(question.sentenceParts || [])];
-                                                  newParts[index].options = newParts[index].options.filter((_, idx) => idx !== optIndex);
+                                                  const blankPart = newParts[index];
+                                                  if (!blankPart || !blankPart.options) return;
+                                                  blankPart.options = blankPart.options.filter((_, idx) => idx !== optIndex);
                                                   if (newParts[index].selectedAnswer === option) {
                                                     newParts[index].selectedAnswer = '';
                                                   }
@@ -668,7 +681,9 @@ const questionTypes = [
                                                   const input = e.target as HTMLInputElement;
                                                   if (input.value.trim()) {
                                                     const newParts = [...(question.sentenceParts || [])];
-                                                    newParts[index].options = [...(newParts[index].options || []), input.value.trim()];
+                                                    const blankPart = newParts[index];
+                                                    if (!blankPart) return;
+                                                    blankPart.options = [...(blankPart.options || []), input.value.trim()];
                                                     handleQuestionChange(question.id, 'sentenceParts', newParts);
                                                     input.value = '';
                                                   }

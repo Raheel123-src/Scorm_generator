@@ -43,7 +43,18 @@ export default function AlignmentDropdown({
 
   if (!isOpen) return null
 
-  const alignmentOptions = [
+  type AlignmentLine = {
+    width: string
+    height: string
+    marginLeft?: string
+  }
+
+  const alignmentOptions: Array<{
+    value: 'left' | 'center' | 'right'
+    label: string
+    icon: typeof AlignLeft
+    lines: AlignmentLine[]
+  }> = [
     {
       value: 'left' as const,
       label: 'left',

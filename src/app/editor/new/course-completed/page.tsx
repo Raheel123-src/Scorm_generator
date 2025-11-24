@@ -10,7 +10,7 @@ const defaultData: CourseCompletedData = {
   subtitle: "How was your course experience?",
   selectedEmoji: 'happy',
   ctaText: "Create your own course",
-  layout: 'centered',
+  layout: 'image-left',
   confetti: 'celebration'
 }
 

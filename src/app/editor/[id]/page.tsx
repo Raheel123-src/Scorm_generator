@@ -73,7 +73,11 @@ const contentTypes: { type: ContentType; label: string; icon: any }[] = [
   { type: 'hotspot', label: 'Hotspot Image', icon: Target },
 ]
 
-export default function SCORMEditorPage({ params }: { params: { id: string } }) {
+type EditorPageProps = {
+  params: any
+}
+
+const SCORMEditorPage = ({ params }: EditorPageProps) => {
   const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>(mockContentBlocks)
   const [selectedBlock, setSelectedBlock] = useState<ContentBlock | null>(contentBlocks[0])
   const [showAddMenu, setShowAddMenu] = useState(false)
@@ -738,3 +742,5 @@ export default function SCORMEditorPage({ params }: { params: { id: string } }) 
     </div>
   )
 }
+
+export default SCORMEditorPage

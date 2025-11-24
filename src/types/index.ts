@@ -75,7 +75,7 @@ export interface EmbedData {
 }
 
 export interface TextImageData {
-  layout: 'left' | 'right' | 'top';
+  layout: 'left' | 'right' | 'top' | 'behind' | 'none';
   image: string;
   content: string;
   title: string;

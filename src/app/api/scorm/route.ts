@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.API_BASE_URL ||
+  'https://scrom.lisaapp.in/api'
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -9,7 +14,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
     }
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/scorm`, {
+    const response = await fetch(`${API_BASE_URL}/scorm`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -39,7 +44,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
     }
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/scorm`, {
+    const response = await fetch(`${API_BASE_URL}/scorm`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`

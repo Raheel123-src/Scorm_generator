@@ -54,7 +54,7 @@ export default function VideoEditor({ data, onChange }: VideoEditorProps) {
       if (visibilityRef.current && !visibilityRef.current.contains(event.target as Node)) {
         setShowVisibilityDropdown(false)
       }
-      if (colorPickerRef.current && !colorPickerRef.contains(event.target as Node)) {
+      if (colorPickerRef.current && !colorPickerRef.current.contains(event.target as Node)) {
         setShowColorPicker(false)
       }
     }

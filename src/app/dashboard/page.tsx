@@ -22,6 +22,11 @@ import { useAuth } from '@/lib/AuthContext'
 import { scormAPI } from '@/lib/api'
 import './dashboard.css'
 
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.API_BASE_URL ||
+  'https://scrom.lisaapp.in/api'
+
 interface SCORMPackage {
   id: string
   title: string
@@ -131,7 +136,7 @@ export default function DashboardPage() {
       formData.append('document', selectedFile)
       formData.append('title', courseTitle.trim())
 
-      const response = await fetch('http://localhost:5001/api/scorm/generate-from-doc', {
+      const response = await fetch(`${API_BASE_URL}/scorm/generate-from-doc`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -148,7 +153,7 @@ export default function DashboardPage() {
       console.log('Generated SCORM data:', scormData)
 
       // Create SCORM package in database
-      const createResponse = await fetch('http://localhost:5001/api/scorm', {
+      const createResponse = await fetch(`${API_BASE_URL}/scorm`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

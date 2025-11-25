@@ -45,7 +45,12 @@ import CourseCompletedEditor from '@/components/Editor/CourseCompletedEditor'
   import './accordion-editor.css'
   import './checklist-editor.css'
   import './quiz-editor.css'
-  import './embed-editor.css'
+import './embed-editor.css'
+
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.API_BASE_URL ||
+  'https://scrom.lisaapp.in/api'
 
 interface ContentBlock {
   id: string
@@ -133,7 +138,7 @@ export default function EditorPage() {
             return
           }
 
-          const response = await fetch(`http://localhost:5001/api/scorm/${packageId}`, {
+          const response = await fetch(`${API_BASE_URL}/scorm/${packageId}`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -825,8 +830,8 @@ Guidelines:
 
       // Use UPDATE if package ID exists, otherwise CREATE
       const apiUrl = scormPackageId 
-        ? `http://localhost:5001/api/scorm/${scormPackageId}`
-        : 'http://localhost:5001/api/scorm'
+        ? `${API_BASE_URL}/scorm/${scormPackageId}`
+        : `${API_BASE_URL}/scorm`
       
       const method = scormPackageId ? 'PUT' : 'POST'
 
@@ -999,7 +1004,7 @@ Guidelines:
       
       // Test backend connection first
       console.log('Testing backend connection...')
-      const testResponse = await fetch('http://localhost:5001/api/test')
+      const testResponse = await fetch(`${API_BASE_URL}/test`)
       if (!testResponse.ok) {
         throw new Error('Backend server is not responding. Please check if the server is running.')
       }
@@ -1007,7 +1012,7 @@ Guidelines:
       
       // First save the current content
       console.log('Saving SCORM package...')
-      const response = await fetch('http://localhost:5001/api/scorm', {
+      const response = await fetch(`${API_BASE_URL}/scorm`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1083,7 +1088,7 @@ Guidelines:
         }
       }
       
-      const generateResponse = await fetch(`http://localhost:5001/api/scorm/${id}/generate`, {
+      const generateResponse = await fetch(`${API_BASE_URL}/scorm/${id}/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

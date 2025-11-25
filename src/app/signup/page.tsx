@@ -49,65 +49,57 @@ export default function SignupPage() {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '2rem 1rem'
-    }}>
+    <div
+      style={{
+        minHeight: '100vh',
+        background: '#f7f3ee',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '2rem 1rem',
+      }}
+    >
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
         style={{
-          maxWidth: '28rem',
+          maxWidth: '30rem',
           width: '100%',
-          background: 'white',
-          borderRadius: '1rem',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-          padding: '2rem',
-          position: 'relative',
-          overflow: 'hidden'
+          background: '#fff',
+          borderRadius: '2.5rem',
+          boxShadow: '0 40px 90px rgba(17,24,39,0.15)',
+          border: '1px solid #f0ebe4',
+          padding: '3rem',
         }}
       >
-        {/* Decorative background */}
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: '4px',
-          background: 'linear-gradient(90deg, #9333ea, #7c3aed, #a855f7)'
-        }} />
-        
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <Link href="/" style={{
-            fontSize: '1.875rem',
-            fontWeight: 'bold',
-            color: '#9333ea',
-            textDecoration: 'none',
-            display: 'inline-block',
-            marginBottom: '1rem'
-          }}>
-            SCORM Generator
+          <Link
+            href="/"
+            style={{
+              textDecoration: 'none',
+              color: '#18181b',
+              fontWeight: 600,
+              fontSize: '1rem',
+              letterSpacing: '0.2em',
+              textTransform: 'uppercase',
+            }}
+          >
+            LisaStudio
           </Link>
-          <h2 style={{
-            fontSize: '1.875rem',
-            fontWeight: 'bold',
-            color: '#111827',
-            marginBottom: '0.5rem'
-          }}>
+          <h2
+            style={{
+              marginTop: '1.5rem',
+              fontSize: '2rem',
+              fontWeight: 600,
+              color: '#14110f',
+            }}
+          >
             Create your account
           </h2>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+          <p style={{ marginTop: '0.75rem', color: '#6c5a4c', fontSize: '0.95rem' }}>
             Already have an account?{' '}
-            <Link href="/login" style={{
-              color: '#9333ea',
-              fontWeight: '500',
-              textDecoration: 'none'
-            }}>
+            <Link href="/login" style={{ color: '#7c5cff', fontWeight: 600, textDecoration: 'none' }}>
               Sign in
             </Link>
           </p>
@@ -136,10 +128,12 @@ export default function SignupPage() {
             <div>
               <label style={{
                 display: 'block',
-                fontSize: '0.875rem',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '0.5rem'
+                fontSize: '0.85rem',
+                fontWeight: '600',
+                color: '#4a3f32',
+                marginBottom: '0.4rem',
+                letterSpacing: '0.02em',
+                textTransform: 'uppercase'
               }}>
                 Full name
               </label>
@@ -149,7 +143,7 @@ export default function SignupPage() {
                   left: '0.75rem',
                   top: '50%',
                   transform: 'translateY(-50%)',
-                  color: '#9ca3af',
+                  color: '#b8a99b',
                   width: '1.25rem',
                   height: '1.25rem'
                 }} />
@@ -160,11 +154,12 @@ export default function SignupPage() {
                   required
                   style={{
                     width: '100%',
-                    padding: '0.75rem 0.75rem 0.75rem 2.5rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '0.5rem',
-                    fontSize: '0.875rem',
+                    padding: '0.8rem 0.8rem 0.8rem 2.5rem',
+                    border: '1px solid #e5ded3',
+                    borderRadius: '1rem',
+                    fontSize: '0.95rem',
                     outline: 'none',
+                    background: '#fffdf9',
                     transition: 'border-color 0.2s, box-shadow 0.2s',
                     boxSizing: 'border-box'
                   }}
@@ -172,11 +167,11 @@ export default function SignupPage() {
                   value={formData.name}
                   onChange={handleChange}
                   onFocus={(e) => {
-                    e.target.style.borderColor = '#9333ea'
-                    e.target.style.boxShadow = '0 0 0 3px rgba(147, 51, 234, 0.1)'
+                    e.target.style.borderColor = '#7c5cff'
+                    e.target.style.boxShadow = '0 0 0 3px rgba(124, 92, 255, 0.15)'
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = '#d1d5db'
+                    e.target.style.borderColor = '#e5ded3'
                     e.target.style.boxShadow = 'none'
                   }}
                 />
@@ -187,10 +182,12 @@ export default function SignupPage() {
             <div>
               <label style={{
                 display: 'block',
-                fontSize: '0.875rem',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '0.5rem'
+                fontSize: '0.85rem',
+                fontWeight: '600',
+                color: '#4a3f32',
+                marginBottom: '0.4rem',
+                letterSpacing: '0.02em',
+                textTransform: 'uppercase'
               }}>
                 Email address
               </label>
@@ -200,7 +197,7 @@ export default function SignupPage() {
                   left: '0.75rem',
                   top: '50%',
                   transform: 'translateY(-50%)',
-                  color: '#9ca3af',
+                  color: '#b8a99b',
                   width: '1.25rem',
                   height: '1.25rem'
                 }} />
@@ -211,11 +208,12 @@ export default function SignupPage() {
                   required
                   style={{
                     width: '100%',
-                    padding: '0.75rem 0.75rem 0.75rem 2.5rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '0.5rem',
-                    fontSize: '0.875rem',
+                    padding: '0.8rem 0.8rem 0.8rem 2.5rem',
+                    border: '1px solid #e5ded3',
+                    borderRadius: '1rem',
+                    fontSize: '0.95rem',
                     outline: 'none',
+                    background: '#fffdf9',
                     transition: 'border-color 0.2s, box-shadow 0.2s',
                     boxSizing: 'border-box'
                   }}
@@ -223,11 +221,11 @@ export default function SignupPage() {
                   value={formData.email}
                   onChange={handleChange}
                   onFocus={(e) => {
-                    e.target.style.borderColor = '#9333ea'
-                    e.target.style.boxShadow = '0 0 0 3px rgba(147, 51, 234, 0.1)'
+                    e.target.style.borderColor = '#7c5cff'
+                    e.target.style.boxShadow = '0 0 0 3px rgba(124, 92, 255, 0.15)'
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = '#d1d5db'
+                    e.target.style.borderColor = '#e5ded3'
                     e.target.style.boxShadow = 'none'
                   }}
                 />
@@ -238,10 +236,12 @@ export default function SignupPage() {
             <div>
               <label style={{
                 display: 'block',
-                fontSize: '0.875rem',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '0.5rem'
+                fontSize: '0.85rem',
+                fontWeight: '600',
+                color: '#4a3f32',
+                marginBottom: '0.4rem',
+                letterSpacing: '0.02em',
+                textTransform: 'uppercase'
               }}>
                 Password
               </label>
@@ -251,7 +251,7 @@ export default function SignupPage() {
                   left: '0.75rem',
                   top: '50%',
                   transform: 'translateY(-50%)',
-                  color: '#9ca3af',
+                  color: '#b8a99b',
                   width: '1.25rem',
                   height: '1.25rem'
                 }} />
@@ -262,11 +262,12 @@ export default function SignupPage() {
                   required
                   style={{
                     width: '100%',
-                    padding: '0.75rem 2.5rem 0.75rem 2.5rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '0.5rem',
-                    fontSize: '0.875rem',
+                    padding: '0.8rem 2.7rem 0.8rem 2.5rem',
+                    border: '1px solid #e5ded3',
+                    borderRadius: '1rem',
+                    fontSize: '0.95rem',
                     outline: 'none',
+                    background: '#fffdf9',
                     transition: 'border-color 0.2s, box-shadow 0.2s',
                     boxSizing: 'border-box'
                   }}
@@ -274,11 +275,11 @@ export default function SignupPage() {
                   value={formData.password}
                   onChange={handleChange}
                   onFocus={(e) => {
-                    e.target.style.borderColor = '#9333ea'
-                    e.target.style.boxShadow = '0 0 0 3px rgba(147, 51, 234, 0.1)'
+                    e.target.style.borderColor = '#7c5cff'
+                    e.target.style.boxShadow = '0 0 0 3px rgba(124, 92, 255, 0.15)'
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = '#d1d5db'
+                    e.target.style.borderColor = '#e5ded3'
                     e.target.style.boxShadow = 'none'
                   }}
                 />
@@ -292,7 +293,7 @@ export default function SignupPage() {
                     transform: 'translateY(-50%)',
                     background: 'none',
                     border: 'none',
-                    color: '#9ca3af',
+                  color: '#b8a99b',
                     cursor: 'pointer',
                     padding: '0.25rem'
                   }}
@@ -306,10 +307,12 @@ export default function SignupPage() {
             <div>
               <label style={{
                 display: 'block',
-                fontSize: '0.875rem',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '0.5rem'
+                fontSize: '0.85rem',
+                fontWeight: '600',
+                color: '#4a3f32',
+                marginBottom: '0.4rem',
+                letterSpacing: '0.02em',
+                textTransform: 'uppercase'
               }}>
                 Confirm password
               </label>
@@ -319,7 +322,7 @@ export default function SignupPage() {
                   left: '0.75rem',
                   top: '50%',
                   transform: 'translateY(-50%)',
-                  color: '#9ca3af',
+                  color: '#b8a99b',
                   width: '1.25rem',
                   height: '1.25rem'
                 }} />
@@ -330,11 +333,12 @@ export default function SignupPage() {
                   required
                   style={{
                     width: '100%',
-                    padding: '0.75rem 0.75rem 0.75rem 2.5rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '0.5rem',
-                    fontSize: '0.875rem',
+                    padding: '0.8rem 0.8rem 0.8rem 2.5rem',
+                    border: '1px solid #e5ded3',
+                    borderRadius: '1rem',
+                    fontSize: '0.95rem',
                     outline: 'none',
+                    background: '#fffdf9',
                     transition: 'border-color 0.2s, box-shadow 0.2s',
                     boxSizing: 'border-box'
                   }}
@@ -342,11 +346,11 @@ export default function SignupPage() {
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   onFocus={(e) => {
-                    e.target.style.borderColor = '#9333ea'
-                    e.target.style.boxShadow = '0 0 0 3px rgba(147, 51, 234, 0.1)'
+                    e.target.style.borderColor = '#7c5cff'
+                    e.target.style.boxShadow = '0 0 0 3px rgba(124, 92, 255, 0.15)'
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = '#d1d5db'
+                    e.target.style.borderColor = '#e5ded3'
                     e.target.style.boxShadow = 'none'
                   }}
                 />
@@ -364,21 +368,21 @@ export default function SignupPage() {
               style={{
                 width: '1rem',
                 height: '1rem',
-                accentColor: '#9333ea',
+                accentColor: '#111827',
                 marginTop: '0.125rem'
               }}
             />
             <label htmlFor="terms" style={{
-              fontSize: '0.875rem',
-              color: '#374151',
+              fontSize: '0.95rem',
+              color: '#4a3f32',
               lineHeight: '1.25rem'
             }}>
               I agree to the{' '}
-              <Link href="/terms" style={{ color: '#9333ea', textDecoration: 'none' }}>
+              <Link href="/terms" style={{ color: '#7c5cff', textDecoration: 'none', fontWeight: 600 }}>
                 Terms of Service
               </Link>{' '}
               and{' '}
-              <Link href="/privacy" style={{ color: '#9333ea', textDecoration: 'none' }}>
+              <Link href="/privacy" style={{ color: '#7c5cff', textDecoration: 'none', fontWeight: 600 }}>
                 Privacy Policy
               </Link>
             </label>
@@ -390,29 +394,15 @@ export default function SignupPage() {
             disabled={loading}
             style={{
               width: '100%',
-              background: loading ? '#9ca3af' : 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)',
-              color: 'white',
-              fontWeight: '500',
-              padding: '0.875rem 1rem',
-              borderRadius: '0.5rem',
-              border: 'none',
+              background: loading ? '#cbd5f5' : '#111827',
+              color: '#fff',
+              fontWeight: 600,
+              padding: '0.95rem 1rem',
+              borderRadius: '999px',
+              border: '1px solid #111827',
               fontSize: '1rem',
               cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s',
-              boxShadow: loading ? 'none' : '0 4px 14px 0 rgba(147, 51, 234, 0.3)',
-              opacity: loading ? 0.7 : 1
-            }}
-            onMouseEnter={(e) => {
-              if (!loading) {
-                e.currentTarget.style.transform = 'translateY(-1px)'
-                e.currentTarget.style.boxShadow = '0 6px 20px 0 rgba(147, 51, 234, 0.4)'
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!loading) {
-                e.currentTarget.style.transform = 'translateY(0)'
-                e.currentTarget.style.boxShadow = '0 4px 14px 0 rgba(147, 51, 234, 0.3)'
-              }
+              transition: 'transform 0.2s',
             }}
           >
             {loading ? 'Creating account...' : 'Create account'}

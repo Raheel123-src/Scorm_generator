@@ -27,8 +27,21 @@ app.use((req, res, next) => {
 });
 
 // Middleware
+const defaultOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://127.0.0.1:3000'
+];
+
+const remoteOrigins = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+
+const allowedOrigins = [...new Set([...defaultOrigins, ...remoteOrigins])];
+
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000'],
+  origin: allowedOrigins,
   credentials: true
 }));
 // Body parser with increased limits for video uploads

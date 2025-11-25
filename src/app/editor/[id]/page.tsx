@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import { 
   Eye, 
   Plus, 
@@ -73,11 +73,9 @@ const contentTypes: { type: ContentType; label: string; icon: any }[] = [
   { type: 'hotspot', label: 'Hotspot Image', icon: Target },
 ]
 
-type EditorPageProps = {
-  params: any
-}
-
-const SCORMEditorPage = ({ params }: EditorPageProps) => {
+export default function SCORMEditorPage() {
+  const params = useParams()
+  const id = params?.id as string
   const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>(mockContentBlocks)
   const [selectedBlock, setSelectedBlock] = useState<ContentBlock | null>(contentBlocks[0])
   const [showAddMenu, setShowAddMenu] = useState(false)
@@ -742,5 +740,3 @@ const SCORMEditorPage = ({ params }: EditorPageProps) => {
     </div>
   )
 }
-
-export default SCORMEditorPage

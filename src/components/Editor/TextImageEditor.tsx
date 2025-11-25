@@ -21,11 +21,9 @@ interface TextImageEditorProps {
   onChange: (data: TextImageData) => void
 }
 
-type TextImageDataWithBody = TextImageData & { body?: string }
-
 export default function TextImageEditor({ data, onChange }: TextImageEditorProps) {
   const [formData, setFormData] = useState<TextImageData>({
-    layout: (data.layout as TextImageData['layout']) || 'right',
+    layout: data.layout || 'right',
     image: data.image || '',
     content: data.content || '',
     title: data.title || 'Untitled',
@@ -34,6 +32,9 @@ export default function TextImageEditor({ data, onChange }: TextImageEditorProps
 
   // Update formData when data prop changes (especially title and content from block.data)
   useEffect(() => {
+    type TextImageDataWithBody = TextImageData & { body?: string }
+    const dataWithBody = data as TextImageDataWithBody
+    
     if (data.title !== undefined && data.title !== formData.title) {
       setFormData(prev => ({ ...prev, title: data.title }))
     }
@@ -41,12 +42,11 @@ export default function TextImageEditor({ data, onChange }: TextImageEditorProps
       setFormData(prev => ({ ...prev, content: data.content }))
     }
     // Also check for "body" field (from AI generation) and map it to "content"
-    const bodyContent = (data as TextImageDataWithBody).body
-    if (bodyContent !== undefined && bodyContent !== formData.content && bodyContent !== '') {
-      setFormData(prev => ({ ...prev, content: bodyContent }))
+    if (dataWithBody.body !== undefined && dataWithBody.body !== formData.content && dataWithBody.body !== '') {
+      setFormData(prev => ({ ...prev, content: dataWithBody.body! }))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data.title, data.content, (data as TextImageDataWithBody).body])
+  }, [data.title, data.content, (data as TextImageData & { body?: string }).body])
 
   // Update contentEditable element when formData.content changes
   useEffect(() => {
@@ -301,7 +301,8 @@ export default function TextImageEditor({ data, onChange }: TextImageEditorProps
                   const input = document.createElement('input')
                   input.type = 'file'
                   input.accept = 'image/*'
-                    input.onchange = (event) => handleImageUpload(event as unknown as React.ChangeEvent<HTMLInputElement>)
+                  input.onchange = (event) =>
+                    handleImageUpload(event as unknown as React.ChangeEvent<HTMLInputElement>)
                   input.click()
                 }}
               >

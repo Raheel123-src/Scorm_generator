@@ -72,7 +72,7 @@ const questionTypes: Array<{ id: QuestionType; label: string; icon: string }> = 
   };
 
   const handleQuestionTypeSelect = (type: QuestionType) => {
-    const getDefaultQuestion = (questionType: QuestionType) => {
+    const getDefaultQuestion = (questionType: string) => {
       switch (questionType) {
         case 'mcq':
           return 'Choose the correct answer from the options below:';
@@ -95,7 +95,7 @@ const questionTypes: Array<{ id: QuestionType; label: string; icon: string }> = 
 
     const newQuestion: QuizData['questions'][number] = {
       id: `question-${Date.now()}`,
-      type,
+      type: type,
       question: getDefaultQuestion(type),
       options: type === 'mcq' || type === 'multiple' ? ['Option 1', 'Option 2', 'Option 3', 'Option 4'] : undefined,
       correctAnswer: type === 'mcq' ? 0 : 
@@ -105,28 +105,22 @@ const questionTypes: Array<{ id: QuestionType; label: string; icon: string }> = 
                     type === 'fill-blank' ? [] : 
                     type === 'match' ? [] : 
                     type === 'sequence' ? [] : '',
-      sentenceParts: type === 'fill-blank'
-        ? ([
-            { type: 'text', text: 'The capital of France is' },
-            { type: 'blank', options: ['Paris', 'London', 'Berlin'], selectedAnswer: '' },
-            { type: 'text', text: '. It has a football club named as' },
-            { type: 'blank', options: ['PSG', 'Arsenal', 'Bayern'], selectedAnswer: '' }
-          ] as SentencePart[])
-        : undefined,
-      matchPairs: type === 'match'
-        ? ([
-            { item: '', option: '' },
-            { item: '', option: '' }
-          ] as MatchPair[])
-        : undefined,
-      sequenceItems: type === 'sequence'
-        ? ([
-            { text: 'Item 1' },
-            { text: 'Item 2' },
-            { text: 'Item 3' },
-            { text: '' }
-          ] as SequenceItem[])
-        : undefined,
+      sentenceParts: type === 'fill-blank' ? [
+        { type: 'text' as const, text: 'The capital of France is' },
+        { type: 'blank' as const, options: ['Paris', 'London', 'Berlin'], selectedAnswer: '' },
+        { type: 'text' as const, text: '. It has a football club named as' },
+        { type: 'blank' as const, options: ['PSG', 'Arsenal', 'Bayern'], selectedAnswer: '' }
+      ] : undefined,
+      matchPairs: type === 'match' ? [
+        { item: '', option: '' },
+        { item: '', option: '' }
+      ] : undefined,
+      sequenceItems: type === 'sequence' ? [
+        { text: 'Item 1' },
+        { text: 'Item 2' },
+        { text: 'Item 3' },
+        { text: '' }
+      ] : undefined,
       explanation: ''
     };
 
@@ -658,10 +652,11 @@ const questionTypes: Array<{ id: QuestionType; label: string; icon: string }> = 
                                                   e.stopPropagation();
                                                   const newParts = [...(question.sentenceParts || [])];
                                                   const blankPart = newParts[index];
-                                                  if (!blankPart || !blankPart.options) return;
-                                                  blankPart.options = blankPart.options.filter((_, idx) => idx !== optIndex);
-                                                  if (newParts[index].selectedAnswer === option) {
-                                                    newParts[index].selectedAnswer = '';
+                                                  if (blankPart && blankPart.options) {
+                                                    blankPart.options = blankPart.options.filter((_, idx) => idx !== optIndex);
+                                                    if (blankPart.selectedAnswer === option) {
+                                                      blankPart.selectedAnswer = '';
+                                                    }
                                                   }
                                                   handleQuestionChange(question.id, 'sentenceParts', newParts);
                                                 }}
@@ -682,8 +677,9 @@ const questionTypes: Array<{ id: QuestionType; label: string; icon: string }> = 
                                                   if (input.value.trim()) {
                                                     const newParts = [...(question.sentenceParts || [])];
                                                     const blankPart = newParts[index];
-                                                    if (!blankPart) return;
-                                                    blankPart.options = [...(blankPart.options || []), input.value.trim()];
+                                                    if (blankPart) {
+                                                      blankPart.options = [...(blankPart.options || []), input.value.trim()];
+                                                    }
                                                     handleQuestionChange(question.id, 'sentenceParts', newParts);
                                                     input.value = '';
                                                   }
